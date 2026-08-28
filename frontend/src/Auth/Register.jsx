@@ -34,7 +34,7 @@ export default function Register() {
 
   return (
     <div style={{ padding: '50px', textAlign: 'center', fontFamily: 'sans-serif' }}>
-      <h2 color='#1d4ed8'>Create an Account</h2>
+      <h2 style={{ color: '#1d4ed8' }}>Create an Account</h2>
       <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', width: '300px', margin: '0 auto', gap: '15px' }}>
         <input 
           type="email" 

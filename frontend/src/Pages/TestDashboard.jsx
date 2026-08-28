@@ -14,7 +14,7 @@ export default function TestDashboard() {
         <span style={styles.badge}>Auth Flow Verified</span>
         <h1 style={styles.title}>🎉 You made it!</h1>
         <p style={styles.subtitle}>
-          You have successfully navigated through the authentication flow.
+          WELCOME TO K-MERCE! 😁🙌
         </p>
 
         <div style={styles.statusGrid}>
@@ -28,13 +28,14 @@ export default function TestDashboard() {
           </div>
         </div>
 
-        <button onClick={handleLogout} style={styles.button}>
-          Logout
+        <button onClick={handleLogout} style={{ ...styles.button, width: '80px',padding: '10px', backgroundColor: '#310606', color: 'white', borderRadius: '5px', fontWeight: 'bold' , display: 'flex', alignItems: 'center' }}>
+          LOGOUT
         </button>
       </div>
     </div>
   );
 }
+
 
 const styles = {
   container: {
