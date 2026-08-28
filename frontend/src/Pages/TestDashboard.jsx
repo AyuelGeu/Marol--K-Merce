@@ -6,8 +6,9 @@ export default function TestDashboard() {
   const handleLogout = () => {
     // Later, you'll clear tokens from local storage here
     navigate('/login');
-  };
-
+  }
+// ✅ Correct
+<div data-theme="dark"></div>
   return (
     <div style={styles.container}>
       <div style={styles.card}>
@@ -116,5 +117,8 @@ const styles = {
     fontSize: '14px',
     fontWeight: '600',
     cursor: 'pointer',
+  },
+  body: {
+    backgroundColor: '#1e293b',
   },
 };
