@@ -53,7 +53,7 @@ export default function Register() {
           style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
         />
         <button type="submit" style={{ padding: '10px', cursor: 'pointer', backgroundColor: '#1d4ed8', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>
-          Register
+          REGISTER
         </button>
       </form>
       <p style={{ marginTop: '20px' }}>

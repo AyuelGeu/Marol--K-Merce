@@ -35,7 +35,7 @@ export default function Login() {
 
   return (
     <div style={{ padding: '50px', textAlign: 'center', fontFamily: 'sans-serif' }}>
-      <h2>Welcome Back</h2>
+      <h2>Welcome!</h2>
       <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', width: '300px', margin: '0 auto', gap: '15px' }}>
         <input 
           type="email" 
@@ -54,7 +54,7 @@ export default function Login() {
           style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
         />
         <button type="submit" style={{ padding: '10px', cursor: 'pointer', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>
-          Login
+          LOGIN
         </button>
       </form>
       <p style={{ marginTop: '20px' }}>
