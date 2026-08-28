@@ -34,7 +34,7 @@ export default function Register() {
 
   return (
     <div style={{ padding: '50px', textAlign: 'center', fontFamily: 'sans-serif' }}>
-      <h2>Create an Account</h2>
+      <h2 color='#1d4ed8'>Create an Account</h2>
       <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', width: '300px', margin: '0 auto', gap: '15px' }}>
         <input 
           type="email" 
@@ -42,7 +42,7 @@ export default function Register() {
           value={email} 
           onChange={(e) => setEmail(e.target.value)} 
           required 
-          style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
+          style={{ padding: '10px', borderRadius: '5px', border: '1px solid #1d4ed8' }}
         />
         <input 
           type="password" 
@@ -50,9 +50,9 @@ export default function Register() {
           value={password} 
           onChange={(e) => setPassword(e.target.value)} 
           required 
-          style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
+          style={{ padding: '10px', borderRadius: '5px', border: '1px solid #1d4ed8' }}
         />
-        <button type="submit" style={{ padding: '10px', cursor: 'pointer', backgroundColor: '#1d4ed8', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>
+        <button type="submit" style={{ padding: '10px', cursor: 'pointer', backgroundColor: '#1d4ed8', color: 'white', border: 'none', width: '80px', borderRadius: '5px', fontWeight: 'bold' }}>
           REGISTER
         </button>
       </form>
