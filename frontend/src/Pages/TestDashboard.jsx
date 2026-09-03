@@ -53,10 +53,10 @@ export default function TestDashboard() {
         </nav>
 
         <div style={styles.userProfile}>
-          <img src="https://i.pravatar.cc/150?u=alex" alt="Alex Mercer" style={styles.userAvatar} />
+          <img src="IMG_20251225_231512_910.jpg" alt="Ayuel Geu" style={styles.userAvatar} />
           <div style={styles.userInfo}>
-            <div style={styles.userName}>Alex Mercer</div>
-            <div style={styles.userEmail}>alex@pulse.io</div>
+            <div style={styles.userName}>Ayuel Geu</div>
+            <div style={styles.userEmail}>ayuelgeu34@gmail.com</div>
           </div>
           {/* Integrated original logout functionality here */}
           <button onClick={handleLogout} style={styles.logoutBtn} title="Logout"> {/*[cite: 2]*/}
