@@ -7,6 +7,7 @@ const { protect } = require('../middleware/authMiddleware');
 // Public Routes (No middleware needed)
 router.post('/register', registerStaff);
 router.post('/login', loginStaff);
+router.post('/verify-otp', verifyOTP);
 
 // Protected Route Example (Middleware applied)
 router.get('/dashboard', protect, (req, res) => {

@@ -222,8 +222,8 @@ export default function Dashboard() {
               <div style={{ position: 'absolute', bottom: '0', right: '0', width: '10px', height: '10px', backgroundColor: '#10b981', borderRadius: '50%', border: '2px solid #0d121e' }}></div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff' }}>Alex Mercer</span>
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>alex@pulse.io</span>
+              <span style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff' }}>Marol Ayuel</span>
+              <span style={{ fontSize: '12px', color: '#6b7280' }}>ayuelgeu34@gmail.com</span>
             </div>
           </div>
           <div style={{ cursor: 'pointer', color: '#6b7280', transition: 'color 0.2s ease' }} onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'} onMouseLeave={(e) => e.currentTarget.style.color = '#6b7280'}>
