@@ -1,10 +1,15 @@
 const nodemailer = require('nodemailer');
 
+console.log("EMAIL_USER:", process.env.EMAIL_USER);
+console.log("EMAIL_APP_PASS:", process.env.EMAIL_APP_PASS ? "Loaded" : "MISSING!");
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: process.env.EMAIL_SERVICE || 'gmail',
   auth: {
     user: process.env.EMAIL_USER, 
-    pass: process.env.EMAIL_APP_PASSWORD 
+    pass: process.env.EMAIL_APP_PASS,
+  },
+  tls: {
+    rejectUnauthorized: false
   }
 });
 

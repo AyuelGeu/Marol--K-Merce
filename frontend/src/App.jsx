@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './Auth/Login';
 import Register from './Auth/Register';
-import TestDashboard from './pages/TestDashboard';
+import OtpVerification from './Auth/OtpVerification';
+import TestDashboard from './Pages/TestDashboard';
 import './App.css'; // You can keep your existing CSS file
 
 function App() {
@@ -14,7 +15,7 @@ function App() {
         {/* Auth Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        
+        <Route path="/otp-verification" element={<OtpVerification />} />
         {/* Protected/Test Page Route */}
         <Route path="/dashboard" element={<TestDashboard />} />
       </Routes>

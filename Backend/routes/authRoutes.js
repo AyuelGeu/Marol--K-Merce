@@ -3,6 +3,8 @@ const express = require('express');
 const router = express.Router();
 const { registerStaff, loginStaff } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
+// Add verifyOTP to the destructured object
+const { register, login, verifyOTP } = require('../controllers/authController');
 
 // Public Routes (No middleware needed)
 router.post('/register', registerStaff);

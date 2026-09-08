@@ -2,7 +2,7 @@
 const Staff = require('../models/Staff');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const sendOTPEmail = require('../utils/sendEmail');
+const sendOTPEmail = require('../utilies/sendEmail');
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
