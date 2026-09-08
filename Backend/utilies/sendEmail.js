@@ -16,7 +16,7 @@ const transporter = nodemailer.createTransport({
 const sendOTPEmail = async (email, otp) => {
   try {
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `Support <${process.env.EMAIL_USER}>`,
       to: email,
       subject: 'Your 2FA Login Code',
       text: `Your verification code is: ${otp}. It will expire in 10 minutes.`
