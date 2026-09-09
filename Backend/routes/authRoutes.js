@@ -11,6 +11,8 @@ router.post('/register', registerStaff);
 router.post('/login', loginStaff);
 router.post('/verify-otp', verifyOTP);
 
+
+
 // Protected Route Example (Middleware applied)
 router.get('/dashboard', protect, (req, res) => {
     // This route only runs if the 'protect' middleware calls next()

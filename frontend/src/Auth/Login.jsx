@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
-
-
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,7 +22,7 @@ export default function Login() {
       if (response.ok && data.requiresOTP) {
         navigate('/otp-verification', { state: { email: email } });
       } else if (response.ok) {
-        navigate('/Testdashboard');
+        navigate('/dashboard');
       } else {
         alert(`Login failed: ${data.message || data.error}`);
       }
@@ -71,8 +69,12 @@ export default function Login() {
               <input type={showPassword ? 'text' : 'password'} placeholder="••••••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required 
                 style={{ width: '100%', height: '46px', paddingLeft: '14px', paddingRight: '42px', borderRadius: '10px', border: '1px solid #D1D5DB', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
               />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer' }}>
-                 👁️
+              <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#9CA3AF', cursor: 'pointer', display: 'flex' }}>
+                {showPassword ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"/></svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                )}
               </button>
             </div>
           </div>
@@ -80,6 +82,25 @@ export default function Login() {
             {isLoading ? 'Logging in...' : 'Login'}
           </button>
         </form>
+
+        <div style={{ marginTop: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0' }}>
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#E5E7EB' }}></div>
+            <span style={{ padding: '0 10px', color: '#6B7280', fontSize: '14px' }}>Or</span>
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#E5E7EB' }}></div>
+          </div>
+
+          <a href="http://localhost:5000/auth/google" 
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '100%', height: '48px', backgroundColor: '#FFFFFF',
+              color: '#374151', border: '1px solid #D1D5DB', borderRadius: '10px',
+              fontSize: '16px', fontWeight: '600', textDecoration: 'none', cursor: 'pointer'
+            }}>
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: '20px', marginRight: '10px' }} />
+            Continue with Google
+          </a>
+        </div>
         
         <p style={{ marginTop: '24px', marginBottom: '0', fontSize: '14px', color: '#6B7280' }}>
           Don't have an account?{' '}

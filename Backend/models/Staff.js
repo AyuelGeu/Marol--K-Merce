@@ -1,28 +1,32 @@
 const mongoose = require('mongoose');
 
-const staffschema = new mongoose.Schema({
+const staffSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true,
         unique: true
     },
     password: {
+        type: String
+    },
+    googleId: {
         type: String,
-        required: true
+        unique: true,
+        sparse: true
     },
     name: {
         type: String,
-        default: 'New user'
+        default: 'New User'
     },
-    department:{
+    department: {
         type: String,
         default: 'Unassigned'
     },
     role: {
         type: String,
-        default: 'Student'
+        default: 'student'
     },
-    checkedin: {
+    checkedIn: {
         type: Boolean,
         default: false
     },
@@ -40,4 +44,4 @@ const staffschema = new mongoose.Schema({
     }
 });
 
-module.exports = mongoose.model('Staff', staffschema);
+module.exports = mongoose.model('Staff', staffSchema);
