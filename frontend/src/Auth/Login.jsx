@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -12,7 +14,7 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
+      const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -90,15 +92,39 @@ export default function Login() {
             <div style={{ flex: 1, height: '1px', backgroundColor: '#E5E7EB' }}></div>
           </div>
 
-          <a href="http://localhost:5000/auth/google" 
+          <a href={`${BACKEND_URL}/auth/google`} 
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               width: '100%', height: '48px', backgroundColor: '#FFFFFF',
               color: '#374151', border: '1px solid #D1D5DB', borderRadius: '10px',
-              fontSize: '16px', fontWeight: '600', textDecoration: 'none', cursor: 'pointer'
+              fontSize: '16px', fontWeight: '600', textDecoration: 'none', cursor: 'pointer',
+              marginBottom: '10px'
             }}>
             <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: '20px', marginRight: '10px' }} />
             Continue with Google
+          </a>
+
+          <a href={`${BACKEND_URL}/auth/facebook`} 
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '100%', height: '48px', backgroundColor: '#1877F2',
+              color: '#FFFFFF', border: 'none', borderRadius: '10px',
+              fontSize: '16px', fontWeight: '600', textDecoration: 'none', cursor: 'pointer',
+              marginBottom: '10px'
+            }}>
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style={{ marginRight: '10px' }}><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            Continue with Facebook
+          </a>
+
+          <a href={`${BACKEND_URL}/auth/tiktok`}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '100%', height: '48px', backgroundColor: '#000000',
+              color: '#FFFFFF', border: 'none', borderRadius: '10px',
+              fontSize: '16px', fontWeight: '600', textDecoration: 'none', cursor: 'pointer'
+            }}>
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style={{ marginRight: '10px' }}><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.12-3.44-3.17-3.42-5.46.02-3.33 2.87-5.96 6.18-5.83.17 0 .33.02.5.04v4.06c-.84-.11-1.74-.01-2.48.46-.8.47-1.35 1.25-1.42 2.18-.08 1.2.66 2.45 1.82 2.9 1.15.42 2.52.26 3.46-.48.96-.75 1.48-1.93 1.48-3.15.01-4.73 0-9.45.02-14.18z"/></svg>
+            Continue with TikTok
           </a>
         </div>
         
