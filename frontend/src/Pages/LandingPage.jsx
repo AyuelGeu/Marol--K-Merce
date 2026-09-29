@@ -24,6 +24,13 @@ export default function LandingPage() {
   // Real-time Countdown Timer State
   const [timeLeft, setTimeLeft] = useState({ hours: 12, minutes: 45, seconds: 30 });
 
+  // Chat Widget States
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    { sender: 'support', text: 'Hi there! How can we help you today?' }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+
   // Carousel Auto-slide Effect
   useEffect(() => {
     const timer = setInterval(() => {
@@ -51,8 +58,38 @@ export default function LandingPage() {
     );
   };
 
-  // --- FLASHY ANIMATION STYLES ---
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    // Add user message
+    setChatMessages((prev) => [...prev, { sender: 'user', text: chatInput }]);
+    setChatInput('');
+
+    // Simulate auto-reply
+    setTimeout(() => {
+      setChatMessages((prev) => [
+        ...prev, 
+        { sender: 'support', text: "Thanks for reaching out! A representative will connect with you shortly." }
+      ]);
+    }, 1200);
+  };
+
+  // --- FLASHY ANIMATION STYLES (WITH FULL SCREEN RESET) ---
   const flashyCSS = `
+    /* CSS Reset to remove default browser margins and make it fit the screen */
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100%;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    #root {
+      width: 100%;
+      min-height: 100vh;
+    }
+
     @keyframes moveGradient {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
@@ -62,12 +99,14 @@ export default function LandingPage() {
       background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab, #9b59b6, #3498db);
       background-size: 400% 400%;
       animation: moveGradient 12s ease infinite;
+      width: 100%;
+      min-height: 100vh;
     }
   `;
 
   return (
     <>
-      {/* Injecting CSS Keyframes directly into the component */}
+      {/* Injecting CSS Keyframes and resets directly into the component */}
       <style>{flashyCSS}</style>
 
       <div className="flashy-background" style={styles.container}>
@@ -309,6 +348,41 @@ export default function LandingPage() {
           </div>
         </footer>
 
+        {/* 9. FLOATING CHAT WIDGET */}
+        <div style={styles.chatWidget}>
+          {isChatOpen ? (
+            <div style={styles.chatWindow}>
+              <div style={styles.chatHeader}>
+                <span>Live Support</span>
+                <button onClick={() => setIsChatOpen(false)} style={styles.chatCloseBtn}>✖</button>
+              </div>
+              
+              <div style={styles.chatBody}>
+                {chatMessages.map((msg, idx) => (
+                  <div key={idx} style={msg.sender === 'user' ? styles.userMessage : styles.supportMessage}>
+                    {msg.text}
+                  </div>
+                ))}
+              </div>
+              
+              <form onSubmit={handleSendMessage} style={styles.chatForm}>
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Type a message..."
+                  style={styles.chatInput}
+                />
+                <button type="submit" style={styles.chatSendBtn}>Send</button>
+              </form>
+            </div>
+          ) : (
+            <button onClick={() => setIsChatOpen(true)} style={styles.chatBubble}>
+              💬 Chat with us
+            </button>
+          )}
+        </div>
+
       </div>
     </>
   );
@@ -318,11 +392,11 @@ export default function LandingPage() {
 const styles = {
   container: {
     fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    // Background color removed to allow the CSS class animation to shine through
     color: '#0F172A',
     minHeight: '100vh',
     display: 'flex',
-    flexDirection: 'column'
+    flexDirection: 'column',
+    width: '100%'
   },
   topBar: {
     backgroundColor: '#0F172A',
@@ -755,5 +829,103 @@ const styles = {
     paddingTop: '20px',
     textAlign: 'center',
     fontSize: '0.8rem'
+  },
+  
+  // --- CHAT WIDGET STYLES ---
+  chatWidget: {
+    position: 'fixed',
+    bottom: '24px',
+    right: '24px',
+    zIndex: 1000,
+  },
+  chatBubble: {
+    backgroundColor: '#4F46E5',
+    color: '#FFFFFF',
+    border: 'none',
+    borderRadius: '999px',
+    padding: '14px 24px',
+    fontSize: '1rem',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  },
+  chatWindow: {
+    width: '320px',
+    height: '420px',
+    backgroundColor: '#FFFFFF',
+    borderRadius: '12px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden'
+  },
+  chatHeader: {
+    backgroundColor: '#4F46E5',
+    color: '#FFFFFF',
+    padding: '16px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontWeight: 'bold'
+  },
+  chatCloseBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#FFFFFF',
+    fontSize: '1.2rem',
+    cursor: 'pointer'
+  },
+  chatBody: {
+    flex: 1,
+    padding: '16px',
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    backgroundColor: '#F8FAFC'
+  },
+  supportMessage: {
+    backgroundColor: '#E2E8F0',
+    color: '#0F172A',
+    padding: '10px 14px',
+    borderRadius: '12px 12px 12px 2px',
+    alignSelf: 'flex-start',
+    maxWidth: '80%',
+    fontSize: '0.9rem'
+  },
+  userMessage: {
+    backgroundColor: '#4F46E5',
+    color: '#FFFFFF',
+    padding: '10px 14px',
+    borderRadius: '12px 12px 2px 12px',
+    alignSelf: 'flex-end',
+    maxWidth: '80%',
+    fontSize: '0.9rem'
+  },
+  chatForm: {
+    display: 'flex',
+    borderTop: '1px solid #E2E8F0',
+    padding: '12px',
+    backgroundColor: '#FFFFFF'
+  },
+  chatInput: {
+    flex: 1,
+    border: '1px solid #CBD5E1',
+    borderRadius: '20px',
+    padding: '8px 16px',
+    outline: 'none',
+    fontSize: '0.9rem'
+  },
+  chatSendBtn: {
+    backgroundColor: 'transparent',
+    color: '#4F46E5',
+    border: 'none',
+    fontWeight: 'bold',
+    marginLeft: '8px',
+    cursor: 'pointer',
+    padding: '0 8px'
   }
 };
