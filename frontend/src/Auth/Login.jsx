@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import axios from 'axios';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
@@ -14,22 +15,37 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const response = await axios.post(`${BACKEND_URL}/api/auth/login`, {
+        email,
+        password,
+      }, {
+        withCredentials: true,
+        // NEW: This header tells Ngrok to skip the HTML warning page and let the request through to your Node server.
+        headers: {
+          'ngrok-skip-browser-warning': 'true' 
+        }
       });
-      const data = await response.json();
 
-      if (response.ok && data.requiresOTP) {
+      const data = response.data;
+
+      // Checks if the server provided a JWT in the response data.
+      if (data.token) {
+        // Saves the JWT into the browser's localStorage. This establishes the second security layer.
+        localStorage.setItem('jwt_token', data.token);
+      }
+
+      if (data.requiresOTP) {
         navigate('/otp-verification', { state: { email: email } });
-      } else if (response.ok) {
-        navigate('/dashboard');
       } else {
-        alert(`Login failed: ${data.message || data.error}`);
+        navigate('/dashboard');
       }
     } catch (error) {
-      alert("Could not connect to the server.");
+      if (error.response) {
+        // Server returned 4xx or 5xx status code
+        alert(`Login failed: ${error.response.data?.message || error.response.data?.error || 'Invalid credentials'}`);
+      } else {
+        alert("Could not connect to the server.");
+      }
     } finally {
       setIsLoading(false);
     }

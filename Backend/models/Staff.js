@@ -18,6 +18,10 @@ const staffSchema = new mongoose.Schema({
         type: String,
         default: 'New User'
     },
+    userName: {
+        type: String,
+        default: 'New User'
+    },
     department: {
         type: String,
         default: 'Unassigned'

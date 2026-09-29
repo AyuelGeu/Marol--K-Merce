@@ -2,7 +2,7 @@
 const Staff = require('../models/Staff');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const sendOTPEmail = require('../utilies/sendEmail');
+const sendOTPEmail = require('../utils/sendEmail');
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -107,7 +107,10 @@ exports.verifyOTP = async(req, res) => {
         staff.isVerified = true;
         await staff.save();
 
-        // Generate a JWT Token
+        // NEW: Establish Layer 1 security by attaching the user ID to the session cookie[cite: 19]
+        req.session.userId = staff._id.toString();
+
+        // Generate a JWT Token (Layer 2)
         const token = jwt.sign({ id: staff._id, role: staff.role },
             process.env.JWT_SECRET || 'supersecretkey', { expiresIn: '1d' }
         );

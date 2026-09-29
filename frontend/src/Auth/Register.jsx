@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import axios from 'axios';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
@@ -38,22 +39,24 @@ export default function Register() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${BACKEND_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      await axios.post(`${BACKEND_URL}/api/auth/register`, {
+        email,
+        password,
+      }, {
+        withCredentials: true // Instructs Axios to allow the browser to accept and store the Session ID cookie sent by the server upon successful registration.
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        navigate('/otp-verification', { state: { email: email } }); 
-      } else {
-        alert(`Registration failed: ${data.message}`);
-      }
+      // Axios resolves promise on 2xx status codes
+      navigate('/otp-verification', { state: { email: email } }); 
     } catch (error) {
       console.error("Failed to connect to server:", error);
-      alert("Could not connect to the server. Make sure your Node backend is running!");
+      if (error.response) {
+        // Server responded with an error status (4xx, 5xx)
+        alert(`Registration failed: ${error.response.data?.message || error.response.data?.error || 'Registration failed'}`);
+      } else {
+        // Network or connection error
+        alert("Could not connect to the server. Make sure your Node backend is running!");
+      }
     } finally {
       setIsLoading(false);
     }

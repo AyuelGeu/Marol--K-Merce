@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [timeframe, setTimeframe] = useState('12 Months');
+  const navigate = useNavigate();
 
   const navItems = [
     { name: 'Dashboard', icon: (
@@ -168,7 +170,7 @@ export default function Dashboard() {
             </svg>
           </div>
           <span style={{ fontSize: '20px', fontWeight: '800', letterSpacing: '-0.02em', color: '#ffffff' }}>
-            Pulse<span className="gradient-text">Analytics</span>
+            Merce<span className="gradient-text">Analytics</span>
           </span>
         </div>
 
@@ -216,13 +218,13 @@ export default function Dashboard() {
             <div style={{ position: 'relative' }}>
               <img
                 src="https://i.pravatar.cc/150?img=11"
-                alt="Alex Mercer"
+                alt="Ayuel Geu"
                 style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #a855f7', objectFit: 'cover' }}
               />
               <div style={{ position: 'absolute', bottom: '0', right: '0', width: '10px', height: '10px', backgroundColor: '#10b981', borderRadius: '50%', border: '2px solid #0d121e' }}></div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff' }}>Marol Ayuel</span>
+              <span style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff' }}>Ayuel Geu</span>
               <span style={{ fontSize: '12px', color: '#6b7280' }}>ayuelgeu34@gmail.com</span>
             </div>
           </div>

@@ -4,15 +4,17 @@ import Register from './Auth/Register';
 import OtpVerification from './Auth/OtpVerification';
 import TestDashboard from './Pages/TestDashboard';
 import './App.css'; // You can keep your existing CSS file
+import LandingPage from './Pages/LandingPage'; // Import the LandingPage component
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Default route redirects to Login */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        {/* Default route redirects to Landing */}
+        <Route path="/" element={<Navigate to="/Pages/LandingPage"/>} />
         
         {/* Auth Routes */}
+        <Route element={<LandingPage />} path="/Pages/LandingPage" />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/otp-verification" element={<OtpVerification />} />
