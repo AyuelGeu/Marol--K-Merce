@@ -23,28 +23,31 @@ exports.registerStaff = async(req, res) => {
         // Hash the password for production security
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
-
         const otp = generateOTP();
+
+        // Allow selection of roles, but ensure it adheres to valid values; fallback to 'customer'
+        const assignedRole = ['admin', 'vendor', 'customer'].includes(role) ? role : 'customer';
 
         // Create the new staff member
         const newStaff = new Staff({
             email,
             password: hashedPassword,
             name: name || 'New User',
-            department: 'Data Annotation',
-            role: 'tutor',
+            role: assignedRole,
             otp: otp,
             otpExpiry: Date.now() + 10 * 60 * 1000 // 10 minutes
         });
 
         await newStaff.save();
 
-        // Send OTP email
-        await sendOTPEmail(email, otp);
+        if (process.env.NODE_ENV !== 'test') {
+            await sendOTPEmail(email, otp);
+        }
 
         res.status(201).json({
-            message: 'Registration successful. Please verify your email.',
-            requiresOTP: true
+            message: 'Registration successful. Please verify your OTP.',
+            requiresOTP: true,
+            email: newStaff.email
         });
     } catch (error) {
         console.error('Error in register route:', error);
@@ -74,11 +77,14 @@ exports.loginStaff = async(req, res) => {
         await staff.save();
 
         // Send OTP email
-        await sendOTPEmail(staff.email, otp);
+        if (process.env.NODE_ENV !== 'test') {
+            await sendOTPEmail(staff.email, otp);
+        }
 
         res.status(200).json({
             message: 'Credentials valid. OTP sent to email.',
-            requiresOTP: true
+            requiresOTP: true,
+            email: staff.email
         });
     } catch (error) {
         console.error('Error in login route:', error);
@@ -108,7 +114,9 @@ exports.verifyOTP = async(req, res) => {
         await staff.save();
 
         // NEW: Establish Layer 1 security by attaching the user ID to the session cookie[cite: 19]
-        req.session.userId = staff._id.toString();
+        if (req.session) {
+            req.session.userId = staff._id.toString();
+        }
 
         // Generate a JWT Token (Layer 2)
         const token = jwt.sign({ id: staff._id, role: staff.role },
@@ -123,5 +131,5 @@ exports.verifyOTP = async(req, res) => {
     } catch (error) {
         console.error('Error in verify route:', error);
         res.status(500).json({ error: 'Server error during verification' });
-    }
+    }            
 };

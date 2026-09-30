@@ -1,6 +1,7 @@
 // routes/authRoutes.js
 const express = require('express');
 const router = express.Router();
+const Staff = require('../models/Staff');
 const { registerStaff, loginStaff, verifyOTP } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -25,11 +26,27 @@ router.post('/logout', (req, res) => {
         return res.status(200).json({ message: 'Logged out successfully' });
     }
 });
+//Admin-Only Routes
+router.get('/admin/users', protect, authorize('admin'), async (req, res) => {
+    try {
+        const users = await Staff.find().select('-password -otp -otpExpiry'); // Exclude sensitive fields
+        res.status(200).json(users);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch users' });
+    }
+});
+
+//Admin & Vendor Shared Routes
+router.get('/shared-data', protect, authorize(['admin', 'vendor']), async (req, res) => {
+    res.json({ message: 'This data is accessible to both Admins and Vendors.' });
+});
+
+//Customer, Admin, and Vendor Shared Routes
+router.get('/customer-data', protect, authorize(['customer', 'admin', 'vendor']), async (req, res) => {
+    res.json({ message: 'This data is accessible to Customers, Admins, and Vendors.' });
+});
 
 // Protected Route Example (Middleware applied)
-router.get('/dashboard', protect, (req, res) => {
-    // This route only runs if the 'protect' middleware calls next()
-    res.json({ message: `Welcome to the dashboard, instructor ${req.user.id}` });
-});
+
 
 module.exports = router;

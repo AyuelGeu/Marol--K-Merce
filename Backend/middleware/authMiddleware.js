@@ -1,13 +1,19 @@
 // middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
+const Staff = require('../models/Staff');
 
-exports.protect = (req, res, next) => {
+// Layer 1 & 2: Authentication Identity
+exports.protect = async (req, res, next) => {
     // 1. Get the token safely without optional chaining
     let token;
+
     const authHeader = req.header('Authorization');
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.split(' ')[1];
+    if (
+        req.headers.authorization && 
+        req.headers.authorization.startsWith('Bearer ')
+    ) {
+        token = req.headers.authorization.split(' ')[1];
     }
 
     // 2. If there's no token, reject the request
@@ -19,12 +25,26 @@ exports.protect = (req, res, next) => {
         // 3. Verify the token
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretkey');
 
+        //Fetch current user details excluding password to keep req.user fresh
+        const currentUser = await Staff.findById(decoded.id).select('-password ');
+        if (!currentUser) {
+            return res.status(401).json({ message: 'User not found, authorization denied' });
+        }
         // 4. Attach the decoded user payload
-        req.user = decoded;
-
-        // 5. Pass control to the next function
+        req.user = currentUser;
         next();
     } catch (error) {
         res.status(401).json({ message: 'Token is not valid' });
     }
+};
+// RBAC Middleware: Authorize Roles
+exports.authorize = (...allowedRoles) => {
+    return (req, res, next) => {
+        if (!req.user || !allowedRoles.includes(req.user.role)) {
+            return res.status(403).json({
+                 message: `Forbidden: Role '${req.user ? req.user.role : 'Guest'}' is not allowed`
+                 });
+        }
+        next();
+    };
 };

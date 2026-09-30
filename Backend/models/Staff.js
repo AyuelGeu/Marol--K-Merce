@@ -22,18 +22,39 @@ const staffSchema = new mongoose.Schema({
         type: String,
         default: 'New User'
     },
-    department: {
-        type: String,
-        default: 'Unassigned'
-    },
+    // Defines access control for Admin, Vendor, or Customer dashboards
     role: {
         type: String,
-        default: 'student'
+        enum: ['customer', 'vendor', 'admin'],
+        default: 'customer',
+        required: true
     },
-    checkedIn: {
-        type: Boolean,
-        default: false
+    // Vendor-specific fields (Admins can toggle isApproved)
+    vendorProfile: {
+        storeName: { 
+            type: String, 
+            trim: true 
+        },
+        storeDescription: { 
+            type: String 
+        },
+        isApproved: { 
+            type: Boolean, 
+            default: false 
+        }
     },
+    // Customer shipping addresses
+    addresses: [{
+        street: String,
+        city: String,
+        postalCode: String,
+        country: String,
+        isDefault: { 
+            type: Boolean, 
+            default: false 
+        }
+    }],
+    // OTP fields maintained for Nodemailer integration
     otp: {
         type: String,
         default: null
@@ -46,6 +67,6 @@ const staffSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     }
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model('Staff', staffSchema);
