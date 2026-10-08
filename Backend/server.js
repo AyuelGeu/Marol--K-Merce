@@ -40,17 +40,16 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // Added for TikTok CSRF state token
 
 // --- Session & Passport Middleware ---
+const secureSessionCookie = process.env.NODE_ENV === 'production' ||
+    (process.env.BACKEND_URL || '').startsWith('https://');
 app.use(session({
     secret: process.env.SESSION_SECRET || 'a_secure_random_string',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        // UPDATED: Must be true if your backend is running on an HTTPS URL (like Ngrok). 
-        // If testing purely on localhost for both frontend and backend, you may need to switch this to false.
-        secure: true,
+        secure: secureSessionCookie,
         httpOnly: true, // Prevents client-side JS from accessing the session cookie
-        // UPDATED: 'none' allows the browser to send cookies across different domains (e.g., localhost to ngrok)
-        sameSite: 'none'
+        sameSite: secureSessionCookie ? 'none' : 'lax'
     }
 }));
 
@@ -65,14 +64,25 @@ passport.use(new GoogleStrategy({
     },
     async(accessToken, refreshToken, profile, done) => {
         try {
-            let existingStaff = await Staff.findOne({ googleId: profile.id });
+            const email = profile.emails?.[0]?.value?.trim().toLowerCase();
+            if (!email) {
+                return done(new Error('Google account did not provide an email address'));
+            }
+
+            let existingStaff = await Staff.findOne({
+                $or: [{ googleId: profile.id }, { email }]
+            });
 
             if (existingStaff) {
+                if (!existingStaff.googleId) {
+                    existingStaff.googleId = profile.id;
+                    await existingStaff.save();
+                }
                 return done(null, existingStaff);
             } else {
                 const newStaff = await new Staff({
                     googleId: profile.id,
-                    email: profile.emails[0].value,
+                    email,
                     name: profile.displayName,
                     isVerified: true
                 }).save();
@@ -144,7 +154,7 @@ connectDB();
 
 // --- Double Layer Security Middleware ---
 // This middleware intercepts requests and checks for BOTH the Session Cookie and the JWT.
-const requireDoubleLayerAuth = (req, res, next) => {
+const requireDoubleLayerAuth = async (req, res, next) => {
     // 1. Check Layer 1: Is there a valid active server session (cookie)?
     if (!req.session || !req.session.userId) {
         return res.status(401).json({ error: 'Unauthorized: Session missing or expired' });
@@ -158,19 +168,27 @@ const requireDoubleLayerAuth = (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
 
+    let decoded;
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-        // 3. Ensure the Session User and the JWT User are the same entity
-        if (decoded.id !== req.session.userId) {
-            return res.status(403).json({ error: 'Forbidden: Token mismatch' });
-        }
-
-        // Attach the verified user payload to the request for the route to use
-        req.user = decoded;
-        next(); // Both layers passed, proceed to the requested route
+        decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretkey');
     } catch (error) {
         return res.status(401).json({ error: 'Unauthorized: Invalid JWT' });
+    }
+
+    if (decoded.id !== req.session.userId) {
+        return res.status(403).json({ error: 'Forbidden: Token mismatch' });
+    }
+
+    try {
+        const currentUser = await Staff.findById(decoded.id).select('role');
+        if (!currentUser) {
+            return res.status(401).json({ error: 'Unauthorized: User not found' });
+        }
+        req.user = currentUser;
+        return next();
+    } catch (error) {
+        console.error('Database error verifying dashboard user:', error);
+        return res.status(500).json({ error: 'Unable to verify dashboard user' });
     }
 };
 
@@ -181,6 +199,10 @@ app.use('/api/auth', authRoutes);
 // Endpoint for Dashboard Analytics
 // Protected this route with the double layer security middleware
 app.get('/api/users', requireDoubleLayerAuth, async(req, res) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Forbidden: Admin role required' });
+    }
+
     try {
         // Fetch users from the Staff model, selecting only name and email for the frontend chart
         const users = await Staff.find({}, 'name email');
@@ -197,7 +219,14 @@ app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'em
 app.get('/auth/google/callback',
     passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL}/login` }),
     (req, res) => {
-        res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+        req.session.userId = req.user._id.toString();
+        req.session.save((error) => {
+            if (error) {
+                console.error('Google login session error:', error);
+                return res.redirect(`${process.env.FRONTEND_URL}/login?oauthError=session`);
+            }
+            return res.redirect(`${process.env.FRONTEND_URL}/oauth/callback`);
+        });
     }
 );
 

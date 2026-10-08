@@ -30,4 +30,21 @@ const sendOTPEmail = async (email, otp) => {
   }
 };
 
+const sendPasswordResetEmail = async (email, resetUrl) => {
+  try {
+    await transporter.sendMail({
+      from: `Support <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Reset your password',
+      text: `Use this link to reset your password. It expires in one hour: ${resetUrl}`,
+      html: `<p>Use the link below to reset your password. It expires in one hour.</p><p><a href="${resetUrl}">Reset password</a></p><p>If you did not request this, you can ignore this email.</p>`
+    });
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    throw new Error('Could not send password reset email', { cause: error });
+  }
+};
+
 module.exports = sendOTPEmail;
+module.exports.sendOTPEmail = sendOTPEmail;
+module.exports.sendPasswordResetEmail = sendPasswordResetEmail;

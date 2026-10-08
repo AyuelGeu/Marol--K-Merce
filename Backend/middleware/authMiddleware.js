@@ -39,11 +39,12 @@ exports.protect = async (req, res, next) => {
 };
 // RBAC Middleware: Authorize Roles
 exports.authorize = (...allowedRoles) => {
+    const roleSet = new Set(allowedRoles.flat());
     return (req, res, next) => {
-        if (!req.user || !allowedRoles.includes(req.user.role)) {
+        if (!req.user || !roleSet.has(req.user.role)) {
             return res.status(403).json({
-                 message: `Forbidden: Role '${req.user ? req.user.role : 'Guest'}' is not allowed`
-                 });
+                message: `Forbidden: Role '${req.user ? req.user.role : 'Guest'}' is not allowed`
+            });
         }
         next();
     };

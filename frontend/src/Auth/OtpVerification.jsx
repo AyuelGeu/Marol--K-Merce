@@ -39,14 +39,25 @@ export default function OtpVerification() {
       if (data.token) {
         localStorage.setItem('jwt_token', data.token);
       }
-      
-      navigate('/dashboard'); 
+
+      if (!data.staff?.role) {
+        localStorage.removeItem('jwt_token');
+        throw new Error('The server response did not include your account role.');
+      }
+
+      localStorage.setItem('user_data', JSON.stringify(data.staff));
+      const dashboardByRole = {
+        admin: '/admin/dashboard',
+        vendor: '/vendor/dashboard',
+        customer: '/customer/dashboard'
+      };
+      navigate(dashboardByRole[data.staff.role] || '/unauthorized', { replace: true });
     } catch (error) {
       if (error.response) {
         // Server returned 4xx or 5xx status code
         alert(`Verification failed: ${error.response.data?.error || error.response.data?.message || 'Invalid code'}`);
       } else {
-        alert("Could not connect to the server.");
+        alert(error.message || "Could not connect to the server.");
       }
     }
   };

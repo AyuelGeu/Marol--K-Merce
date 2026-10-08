@@ -66,7 +66,23 @@ const staffSchema = new mongoose.Schema({
     isVerified: {
         type: Boolean,
         default: false
+    },
+
+    // NEW: Password reset fields directly inside the schema
+    resetPasswordToken: {
+        type: String
+    },
+    resetPasswordExpire: {
+        type: Date
+    },
+    resetPasswordTokens: {
+        type: [{
+            tokenHash: String,
+            expiresAt: Date
+        }],
+        default: []
     }
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('Staff', staffSchema);
