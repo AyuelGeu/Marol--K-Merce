@@ -242,7 +242,7 @@ export default function AdminDashboard() {
           <div className="admin-breadcrumb">Workspace <span>/</span> Overview</div>
           <div className="admin-topbar-user">
             <span className="admin-topbar-avatar">{adminName.charAt(0)}</span>
-            <span><strong>{adminName}</strong><small>Platform management</small></span>
+            <span><strong>{adminName}</strong><br /><small>Platform management</small></span>
             <button className="admin-signout-button" type="button" onClick={signOut}>Log out</button>
           </div>
         </header>
