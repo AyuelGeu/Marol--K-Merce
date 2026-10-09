@@ -224,13 +224,50 @@ exports.updateVendorStoreName = async (req, res) => {
     }
 
     try {
-        req.user.set('vendorProfile.pendingStoreName', storeName);
-        req.user.set('vendorProfile.storeNameStatus', 'pending');
-        await req.user.save();
+        const vendor = await Staff.findOneAndUpdate(
+            {
+                _id: req.user._id,
+                role: 'vendor',
+                'vendorProfile.storeNameStatus': { $nin: ['pending', 'approved'] },
+                'vendorProfile.storeName': { $in: ['', null] }
+            },
+            {
+                $set: {
+                    'vendorProfile.pendingStoreName': storeName,
+                    'vendorProfile.storeNameStatus': 'pending'
+                }
+            },
+            { new: true, runValidators: true }
+        );
+
+        if (!vendor) {
+            const currentVendor = await Staff.findById(req.user._id).select('vendorProfile');
+            if (!currentVendor) {
+                return res.status(404).json({ message: 'Vendor account was not found' });
+            }
+
+            if (currentVendor.vendorProfile?.storeNameStatus === 'approved' ||
+                currentVendor.vendorProfile?.storeName) {
+                return res.status(409).json({
+                    message: 'Your approved store is permanent. Vendors can only have one store.'
+                });
+            }
+
+            if (currentVendor.vendorProfile?.storeNameStatus === 'pending') {
+                return res.status(409).json({
+                    message: 'Your store name is already awaiting administrator approval.'
+                });
+            }
+
+            return res.status(409).json({
+                message: 'The store name could not be submitted. Refresh your dashboard and try again.'
+            });
+        }
+
         return res.status(200).json({
             message: 'Store name submitted for admin approval',
             pendingStoreName: storeName,
-            storeNameStatus: 'pending'
+            storeNameStatus: vendor.vendorProfile.storeNameStatus
         });
     } catch (error) {
         console.error('Error updating vendor store name:', error);

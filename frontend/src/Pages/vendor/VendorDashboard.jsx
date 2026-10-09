@@ -262,31 +262,42 @@ export default function VendorDashboard() {
                 <span />{vendorProfile.isApproved ? 'Approved' : 'Approval pending'}
               </span>
             </div>
-            <form className="vendor-store-name-form" onSubmit={saveStoreName}>
-              <label htmlFor="vendor-store-name">Store name</label>
-              <div className="vendor-store-name-controls">
-                <input
-                  id="vendor-store-name"
-                  type="text"
-                  value={storeName}
-                  onChange={(event) => setStoreName(event.target.value)}
-                  maxLength={100}
-                  placeholder="Enter your store name"
-                  required
-                />
-                <button type="submit" disabled={isSavingStoreName}>
-                  {isSavingStoreName ? 'Saving…' : 'Save store name'}
-                </button>
+            {storeNameStatus === 'approved' ? (
+              <div className="vendor-store-name-form">
+                <span className="vendor-store-name-success" role="status">
+                  Your store “{vendorProfile.storeName || storeName}” has been approved. Each vendor account can have only one store, so another store name cannot be submitted.
+                </span>
               </div>
-              {storeNameError && <span className="vendor-store-name-error" role="alert">{storeNameError}</span>}
-              {storeNameMessage && <span className="vendor-store-name-success" role="status">{storeNameMessage}</span>}
-              {!storeNameMessage && storeNameStatus === 'pending' && (
-                <span className="vendor-store-name-pending" role="status">Pending admin approval: {vendorProfile.pendingStoreName}</span>
-              )}
-              {!storeNameMessage && storeNameStatus === 'rejected' && (
-                <span className="vendor-store-name-error" role="status">Your last store name was rejected. Update it and submit again.</span>
-              )}
-            </form>
+            ) : storeNameStatus === 'pending' ? (
+              <div className="vendor-store-name-form">
+                <span className="vendor-store-name-pending" role="status">
+                  Store name “{vendorProfile.pendingStoreName || storeName}” is waiting for administrator approval. You can’t change it while it’s under review.
+                </span>
+                {storeNameMessage && <span className="vendor-store-name-success">{storeNameMessage}</span>}
+              </div>
+            ) : (
+              <form className="vendor-store-name-form" onSubmit={saveStoreName}>
+                <label htmlFor="vendor-store-name">Store name</label>
+                <div className="vendor-store-name-controls">
+                  <input
+                    id="vendor-store-name"
+                    type="text"
+                    value={storeName}
+                    onChange={(event) => setStoreName(event.target.value)}
+                    maxLength={100}
+                    placeholder="Enter your store name"
+                    required
+                  />
+                  <button type="submit" disabled={isSavingStoreName}>
+                    {isSavingStoreName ? 'Saving…' : 'Save store name'}
+                  </button>
+                </div>
+                {storeNameError && <span className="vendor-store-name-error" role="alert">{storeNameError}</span>}
+                {storeNameStatus === 'rejected' && (
+                  <span className="vendor-store-name-error" role="status">Your last store name was rejected. Update it and submit again.</span>
+                )}
+              </form>
+            )}
             <div className="workspace-detail-grid">
               <div className="workspace-detail-item">
                 <span>STORE NAME</span>

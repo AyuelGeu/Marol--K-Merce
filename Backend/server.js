@@ -240,6 +240,7 @@ app.get('/auth/facebook', passport.authenticate('facebook', { scope: ['email'] }
 app.get('/auth/facebook/callback',
     passport.authenticate('facebook', { failureRedirect: `${process.env.FRONTEND_URL}/login` }),
     (req, res) => {
+        req.session.userId = req.user._id.toString();
         res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
     }
 );
@@ -289,6 +290,7 @@ app.get('/auth/tiktok/callback', async(req, res) => {
         // Establish passport session login manually for TikTok
         req.login(existingStaff, (err) => {
             if (err) throw err;
+            req.session.userId = existingStaff._id.toString();
             res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
         });
 

@@ -247,7 +247,6 @@ export default function Login({ isModal = false, onClose }) {
         }}>Welcome Back</h2>
         
         <p style={{ fontSize: '15px', color: '#94a3b8', margin: '0 0 28px 0' }}>Please enter your credentials to sign in.</p>
-
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ textAlign: 'left' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#cbd5e1', marginBottom: '8px', letterSpacing: '0.02em', textTransform: 'uppercase' }}>Email Address</label>
