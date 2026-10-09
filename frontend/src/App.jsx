@@ -12,6 +12,7 @@ import OAuthCallback from './Auth/OAuthCallback';
 import AdminDashboard from './Pages/admin/AdminDashboard.jsx';
 import VendorDashboard from './Pages/vendor/VendorDashboard.jsx';
 import CustomerDashboard from './Pages/customer/CustomerDashboard.jsx';
+import Marketplace from './Pages/Marketplace.jsx';
 
 //Security Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -56,6 +57,7 @@ function App() {
       <Routes>
         {/* Start visitors on the landing page */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/marketplace" element={<Marketplace />} />
         
         {/* Auth Routes */}
         <Route element={<LandingPage />} path="/Pages/LandingPage" />

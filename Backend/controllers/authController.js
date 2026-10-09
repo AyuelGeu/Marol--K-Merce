@@ -3,6 +3,8 @@ const Staff = require('../models/Staff');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const fs = require('fs').promises;
+const path = require('path');
 const { sendOTPEmail, sendPasswordResetEmail } = require('../utils/sendEmail');
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
@@ -155,12 +157,15 @@ exports.verifyOTP = async(req, res) => {
                 email: staff.email,
                 name: staff.name,
                 userName: staff.userName,
+                profilePicture: staff.profilePicture || '',
                 role: staff.role,
                 isVerified: staff.isVerified,
                 createdAt: staff.createdAt,
                 addressCount: Array.isArray(staff.addresses) ? staff.addresses.length : 0,
                 vendorProfile: {
                     storeName: staff.vendorProfile?.storeName || '',
+                    pendingStoreName: staff.vendorProfile?.pendingStoreName || '',
+                    storeNameStatus: staff.vendorProfile?.storeNameStatus || 'not_submitted',
                     isApproved: staff.vendorProfile?.isApproved || false
                 }
             }
@@ -169,6 +174,110 @@ exports.verifyOTP = async(req, res) => {
         console.error('Error in verify route:', error);
         res.status(500).json({ error: 'Server error during verification' });
     }            
+};
+
+exports.updateProfilePicture = async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ message: 'Choose an image to upload' });
+    }
+
+    const previousPicture = req.user.profilePicture;
+    const profilePicture = `/uploads/${req.file.filename}`;
+
+    try {
+        req.user.profilePicture = profilePicture;
+        await req.user.save();
+    } catch (error) {
+        try {
+            await fs.unlink(req.file.path);
+        } catch (cleanupError) {
+            console.error('Unable to remove an unsuccessful profile picture upload:', cleanupError);
+        }
+        console.error('Error updating profile picture:', error);
+        return res.status(500).json({ message: 'Unable to update profile picture' });
+    }
+
+    if (typeof previousPicture === 'string' && /^\/uploads\/[a-f0-9-]+\.(jpg|png|webp|gif)$/.test(previousPicture)) {
+        try {
+            await fs.unlink(path.join(__dirname, '..', 'uploads', path.basename(previousPicture)));
+        } catch (error) {
+            if (error.code !== 'ENOENT') {
+                console.error('Unable to remove the replaced profile picture:', error);
+            }
+        }
+    }
+
+    return res.status(200).json({
+        message: 'Profile picture updated',
+        profilePicture
+    });
+};
+
+exports.updateVendorStoreName = async (req, res) => {
+    if (typeof req.body.storeName !== 'string' || !req.body.storeName.trim()) {
+        return res.status(400).json({ message: 'Store name is required' });
+    }
+
+    const storeName = req.body.storeName.trim();
+    if (storeName.length > 100) {
+        return res.status(400).json({ message: 'Store name must be 100 characters or fewer' });
+    }
+
+    try {
+        req.user.set('vendorProfile.pendingStoreName', storeName);
+        req.user.set('vendorProfile.storeNameStatus', 'pending');
+        await req.user.save();
+        return res.status(200).json({
+            message: 'Store name submitted for admin approval',
+            pendingStoreName: storeName,
+            storeNameStatus: 'pending'
+        });
+    } catch (error) {
+        console.error('Error updating vendor store name:', error);
+        return res.status(500).json({ message: 'Unable to update store name' });
+    }
+};
+
+exports.reviewVendorStoreName = async (req, res) => {
+    const { decision, storeName } = req.body;
+    if (!['approve', 'reject'].includes(decision)) {
+        return res.status(400).json({ message: 'Decision must be approve or reject' });
+    }
+    if (typeof storeName !== 'string' || !storeName.trim()) {
+        return res.status(400).json({ message: 'Store name is required for review' });
+    }
+
+    try {
+        const vendor = await Staff.findOne({
+            _id: req.params.vendorId,
+            role: 'vendor',
+            'vendorProfile.storeNameStatus': 'pending',
+            'vendorProfile.pendingStoreName': storeName
+        });
+        if (!vendor || !vendor.vendorProfile?.pendingStoreName) {
+            return res.status(404).json({ message: 'No pending store name found for this vendor' });
+        }
+
+        if (decision === 'approve') {
+            vendor.set('vendorProfile.storeName', vendor.vendorProfile.pendingStoreName);
+            vendor.set('vendorProfile.storeNameStatus', 'approved');
+        } else {
+            vendor.set('vendorProfile.storeNameStatus', 'rejected');
+        }
+        vendor.set('vendorProfile.pendingStoreName', '');
+        await vendor.save();
+
+        return res.status(200).json({
+            message: decision === 'approve' ? 'Store name approved' : 'Store name rejected',
+            vendorId: vendor._id,
+            storeName: vendor.vendorProfile.storeName || '',
+            pendingStoreName: '',
+            storeNameStatus: vendor.vendorProfile.storeNameStatus
+        });
+    } catch (error) {
+        console.error('Error reviewing vendor store name:', error);
+        return res.status(500).json({ message: 'Unable to review vendor store name' });
+    }
 };
 
 exports.forgotPassword = async (req, res) => {

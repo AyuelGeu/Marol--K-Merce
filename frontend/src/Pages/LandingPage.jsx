@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import Login from '../Auth/Login';
+import Register from '../Auth/Register';
 
 // --- MOCK PRODUCTS DATA ---
 const PRODUCTS = [
@@ -17,9 +19,12 @@ const BANNERS = [
 export default function LandingPage() {
   // --- INTERACTIVE STATES ---
   const [activeBanner, setActiveBanner] = useState(0);
-  const [cartCount, setCartCount] = useState(0);
+  const [cartItems, setCartItems] = useState([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [wishlist, setWishlist] = useState([]);
   const [subscribed, setSubscribed] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   
   // Real-time Countdown Timer State
   const [timeLeft, setTimeLeft] = useState({ hours: 12, minutes: 45, seconds: 30 });
@@ -30,6 +35,8 @@ export default function LandingPage() {
     { sender: 'support', text: 'Hi there! How can we help you today?' }
   ]);
   const [chatInput, setChatInput] = useState('');
+  const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
+  const cartTotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
 
   // Carousel Auto-slide Effect
   useEffect(() => {
@@ -38,6 +45,36 @@ export default function LandingPage() {
     }, 6000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!isCartOpen) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setIsCartOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCartOpen]);
+
+  const addToCart = (product) => {
+    setCartItems((items) => {
+      const existingItem = items.find((item) => item.id === product.id);
+      if (existingItem) {
+        return items.map((item) => (
+          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        ));
+      }
+      return [...items, { ...product, quantity: 1 }];
+    });
+  };
+
+  const updateCartQuantity = (productId, amount) => {
+    setCartItems((items) => items
+      .map((item) => item.id === productId
+        ? { ...item, quantity: item.quantity + amount }
+        : item)
+      .filter((item) => item.quantity > 0));
+  };
 
   // Flash Sale Ticking Timer
   useEffect(() => {
@@ -102,6 +139,198 @@ export default function LandingPage() {
       width: 100%;
       min-height: 100vh;
     }
+    .landing-cart-trigger {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+    }
+    .landing-cart-trigger:focus-visible,
+    .landing-cart-close:focus-visible,
+    .landing-cart-quantity button:focus-visible,
+    .landing-cart-empty button:focus-visible,
+    .landing-cart-footer button:focus-visible {
+      outline: 3px solid #818cf8;
+      outline-offset: 3px;
+    }
+    .landing-cart-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1200;
+      display: flex;
+      justify-content: flex-end;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(3px);
+    }
+    .landing-cart-drawer {
+      display: flex;
+      width: min(440px, 100%);
+      height: 100%;
+      flex-direction: column;
+      background: #fff;
+      color: #0f172a;
+      box-shadow: -12px 0 36px rgba(15, 23, 42, 0.18);
+      animation: landing-cart-enter .2s ease-out;
+    }
+    @keyframes landing-cart-enter {
+      from { transform: translateX(24px); opacity: .7; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .landing-cart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 22px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .landing-cart-header h2 {
+      margin: 0;
+      color: #0f172a;
+      font-size: 1.25rem;
+    }
+    .landing-cart-header span {
+      color: #64748b;
+      font-size: .8rem;
+    }
+    .landing-cart-close {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 0;
+      border-radius: 50%;
+      background: #f1f5f9;
+      color: #334155;
+      cursor: pointer;
+      font-size: 1.5rem;
+    }
+    .landing-cart-empty {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+      text-align: center;
+    }
+    .landing-cart-empty > span {
+      font-size: 2.5rem;
+    }
+    .landing-cart-empty > strong {
+      margin-top: 12px;
+      font-size: 1.05rem;
+    }
+    .landing-cart-empty p,
+    .landing-cart-footer p {
+      color: #64748b;
+      font-size: .85rem;
+    }
+    .landing-cart-empty button,
+    .landing-cart-footer button {
+      min-height: 42px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 8px;
+      background: #4f46e5;
+      color: #fff;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 650;
+    }
+    .landing-cart-items {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 22px;
+    }
+    .landing-cart-item {
+      display: grid;
+      grid-template-columns: 58px minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 12px;
+      padding: 18px 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .landing-cart-item-image {
+      display: grid;
+      width: 58px;
+      height: 58px;
+      place-items: center;
+      border-radius: 9px;
+      font-size: 1.5rem;
+    }
+    .landing-cart-item-info {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .landing-cart-item-info > strong {
+      color: #1e293b;
+      font-size: .85rem;
+      line-height: 1.35;
+    }
+    .landing-cart-item-info > span {
+      color: #64748b;
+      font-size: .78rem;
+    }
+    .landing-cart-item-total {
+      color: #0f172a;
+      font-size: .83rem;
+      white-space: nowrap;
+    }
+    .landing-cart-quantity {
+      display: inline-flex;
+      width: max-content;
+      align-items: center;
+      gap: 12px;
+      margin-top: 4px;
+      border: 1px solid #e2e8f0;
+      border-radius: 7px;
+    }
+    .landing-cart-quantity button {
+      width: 30px;
+      height: 30px;
+      border: 0;
+      background: #f8fafc;
+      color: #334155;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .landing-cart-quantity span {
+      min-width: 12px;
+      text-align: center;
+      font-size: .8rem;
+    }
+    .landing-cart-footer {
+      padding: 18px 22px max(18px, env(safe-area-inset-bottom));
+      border-top: 1px solid #e2e8f0;
+      background: #fff;
+    }
+    .landing-cart-footer > div {
+      display: flex;
+      justify-content: space-between;
+      font-size: 1rem;
+    }
+    .landing-cart-footer p {
+      margin: 7px 0 15px;
+      font-size: .75rem;
+    }
+    .landing-cart-footer button {
+      width: 100%;
+    }
+    @media (max-width: 480px) {
+      .landing-cart-header { padding: 16px; }
+      .landing-cart-items { padding: 4px 16px; }
+      .landing-cart-footer { padding-right: 16px; padding-left: 16px; }
+      .landing-cart-item { grid-template-columns: 48px minmax(0, 1fr) auto; gap: 9px; }
+      .landing-cart-item-image { width: 48px; height: 48px; }
+    }
   `;
 
   return (
@@ -139,24 +368,44 @@ export default function LandingPage() {
           </div>
 
           <div style={styles.userActions}>
+            <Link
+              to="/marketplace"
+              style={{ ...styles.btn, ...styles.btnPrimary, ...styles.marketplaceLink }}
+            >
+              Browse marketplace
+            </Link>
             <div style={styles.iconBadgeContainer} title="Wishlist">
               <span style={styles.actionIcon}>❤️</span>
               <span style={styles.badge}>{wishlist.length}</span>
             </div>
             
-            <div style={styles.iconBadgeContainer} title="Cart">
+            <button
+              type="button"
+              className="landing-cart-trigger"
+              onClick={() => setIsCartOpen(true)}
+              aria-label={`Open cart, ${cartCount} ${cartCount === 1 ? 'item' : 'items'}`}
+              title="Cart"
+            >
               <span style={styles.actionIcon}>🛒</span>
               <span style={styles.badge}>{cartCount}</span>
-            </div>
+            </button>
 
             <div style={styles.authDivider}></div>
 
-            <Link to="/login" style={styles.link}>
-              <button style={{ ...styles.btn, ...styles.btnOutline }}>Log In</button>
-            </Link>
-            <Link to="/register" style={styles.link}>
-              <button style={{ ...styles.btn, ...styles.btnPrimary }}>Register</button>
-            </Link>
+            <button
+              type="button"
+              style={{ ...styles.btn, ...styles.btnOutline }}
+              onClick={() => setIsLoginOpen(true)}
+            >
+              Log In
+            </button>
+            <button
+              type="button"
+              style={{ ...styles.btn, ...styles.btnPrimary }}
+              onClick={() => setIsRegisterOpen(true)}
+            >
+              Register
+            </button>
           </div>
         </header>
 
@@ -175,16 +424,19 @@ export default function LandingPage() {
             <p style={styles.heroSubtitle}>{BANNERS[activeBanner].subtitle}</p>
             
             <div style={styles.heroCTAGroup}>
-              <Link to="/register" style={styles.link}>
-                <button style={{ ...styles.btn, ...styles.btnHero }}>
-                  Create Account & Shop →
-                </button>
+              <Link
+                to="/marketplace"
+                style={{ ...styles.btn, ...styles.btnHero }}
+              >
+                Browse marketplace →
               </Link>
-              <Link to="/login" style={styles.link}>
-                <button style={{ ...styles.btn, ...styles.btnHeroSecondary }}>
-                  Existing Member Login
-                </button>
-              </Link>
+              <button
+                type="button"
+                style={{ ...styles.btn, ...styles.btnHeroSecondary }}
+                onClick={() => setIsLoginOpen(true)}
+              >
+                Existing Member Login
+              </button>
             </div>
           </div>
 
@@ -278,7 +530,8 @@ export default function LandingPage() {
                       <span style={styles.originalPrice}>${prod.originalPrice.toFixed(2)}</span>
                     </div>
                     <button 
-                      onClick={() => setCartCount(c => c + 1)}
+                      type="button"
+                      onClick={() => addToCart(prod)}
                       style={styles.addCartBtn}
                     >
                       + Add
@@ -321,9 +574,25 @@ export default function LandingPage() {
             <div>
               <h4 style={styles.footerColTitle}>Account & Portal</h4>
               <ul style={styles.footerList}>
-                <li><Link to="/login" style={styles.footerLink}>Member Login</Link></li>
-                <li><Link to="/register" style={styles.footerLink}>Register New Account</Link></li>
-                <li><a href="#orders" style={styles.footerLink}>Track Order Status</a></li>
+                <li>
+                  <button
+                    type="button"
+                    style={{ ...styles.footerLink, background: 'none', border: 0, padding: 0, cursor: 'pointer' }}
+                    onClick={() => setIsLoginOpen(true)}
+                  >
+                    Member Login
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    style={{ ...styles.footerLink, background: 'none', border: 0, padding: 0, cursor: 'pointer' }}
+                    onClick={() => setIsRegisterOpen(true)}
+                  >
+                    Register New Account
+                  </button>
+                </li>
+                <li><Link to="/customer/dashboard#orders" style={styles.footerLink}>Track Order Status</Link></li>
               </ul>
             </div>
 
@@ -384,6 +653,66 @@ export default function LandingPage() {
         </div>
 
       </div>
+      {isCartOpen && (
+        <div
+          className="landing-cart-backdrop"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setIsCartOpen(false);
+          }}
+        >
+          <section className="landing-cart-drawer" role="dialog" aria-modal="true" aria-labelledby="landing-cart-title">
+            <header className="landing-cart-header">
+              <div>
+                <h2 id="landing-cart-title">Your cart</h2>
+                <span>{cartCount} {cartCount === 1 ? 'item' : 'items'}</span>
+              </div>
+              <button
+                type="button"
+                className="landing-cart-close"
+                onClick={() => setIsCartOpen(false)}
+                aria-label="Close cart"
+              >
+                ×
+              </button>
+            </header>
+            {cartItems.length === 0 ? (
+              <div className="landing-cart-empty">
+                <span aria-hidden="true">🛒</span>
+                <strong>Your cart is empty</strong>
+                <p>Add a product to get started.</p>
+                <button type="button" onClick={() => setIsCartOpen(false)}>Continue shopping</button>
+              </div>
+            ) : (
+              <>
+                <div className="landing-cart-items">
+                  {cartItems.map((item) => (
+                    <article className="landing-cart-item" key={item.id}>
+                      <span className="landing-cart-item-image" style={{ backgroundColor: item.imageColor }}>🛍️</span>
+                      <div className="landing-cart-item-info">
+                        <strong>{item.name}</strong>
+                        <span>${item.price.toFixed(2)} each</span>
+                        <div className="landing-cart-quantity" aria-label={`Quantity of ${item.name}`}>
+                          <button type="button" onClick={() => updateCartQuantity(item.id, -1)} aria-label={`Remove one ${item.name}`}>−</button>
+                          <span>{item.quantity}</span>
+                          <button type="button" onClick={() => updateCartQuantity(item.id, 1)} aria-label={`Add one ${item.name}`}>+</button>
+                        </div>
+                      </div>
+                      <strong className="landing-cart-item-total">${(item.price * item.quantity).toFixed(2)}</strong>
+                    </article>
+                  ))}
+                </div>
+                <footer className="landing-cart-footer">
+                  <div><span>Subtotal</span><strong>${cartTotal.toFixed(2)}</strong></div>
+                  <p>Shipping and taxes are calculated at checkout.</p>
+                  <button type="button" onClick={() => setIsCartOpen(false)}>Continue shopping</button>
+                </footer>
+              </>
+            )}
+          </section>
+        </div>
+      )}
+      {isLoginOpen && <Login isModal onClose={() => setIsLoginOpen(false)} />}
+      {isRegisterOpen && <Register isModal onClose={() => setIsRegisterOpen(false)} />}
     </>
   );
 }
@@ -511,6 +840,12 @@ const styles = {
   btnPrimary: {
     backgroundColor: '#4F46E5',
     color: '#FFFFFF'
+  },
+  marketplaceLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    textDecoration: 'none',
+    whiteSpace: 'nowrap'
   },
   subNav: {
     backgroundColor: '#FFFFFF',

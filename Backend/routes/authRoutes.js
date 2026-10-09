@@ -8,9 +8,13 @@ const {
     loginStaff,
     verifyOTP,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    updateProfilePicture,
+    updateVendorStoreName,
+    reviewVendorStoreName
 } = require('../controllers/authController');
 const { protect, authorize } = require('../middleware/authMiddleware');
+const uploadProfilePicture = require('../middleware/profilePictureUpload');
 
 // Public Routes (No middleware needed)
 router.post('/register', registerStaff);
@@ -35,18 +39,56 @@ router.post('/logout', (req, res) => {
 });
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password/:token', resetPassword);
+router.put(
+    '/profile-picture',
+    protect,
+    authorize('customer'),
+    uploadProfilePicture,
+    updateProfilePicture
+);
+router.put('/vendor-store', protect, authorize('vendor'), updateVendorStoreName);
+router.put(
+    '/admin/vendors/:vendorId/store-name',
+    protect,
+    authorize('admin'),
+    reviewVendorStoreName
+);
+router.put('/admin/vendors/:vendorId/approval', protect, authorize('admin'), async (req, res) => {
+    try {
+        const vendor = await Staff.findOneAndUpdate(
+            { _id: req.params.vendorId, role: 'vendor' },
+            { $set: { 'vendorProfile.isApproved': true } },
+            { new: true, runValidators: true }
+        );
+        if (!vendor) {
+            return res.status(404).json({ message: 'Vendor account was not found' });
+        }
+
+        return res.status(200).json({
+            message: 'Vendor account approved',
+            vendorId: vendor._id,
+            isApproved: vendor.vendorProfile.isApproved
+        });
+    } catch (error) {
+        console.error('Error approving vendor account:', error);
+        return res.status(500).json({ message: 'Unable to approve vendor account' });
+    }
+});
 router.get('/me', protect, (req, res) => {
     res.status(200).json({
         id: req.user._id,
         email: req.user.email,
         name: req.user.name,
         userName: req.user.userName,
+        profilePicture: req.user.profilePicture || '',
         role: req.user.role,
         isVerified: req.user.isVerified,
         createdAt: req.user.createdAt,
         addressCount: Array.isArray(req.user.addresses) ? req.user.addresses.length : 0,
         vendorProfile: {
             storeName: req.user.vendorProfile?.storeName || '',
+            pendingStoreName: req.user.vendorProfile?.pendingStoreName || '',
+            storeNameStatus: req.user.vendorProfile?.storeNameStatus || 'not_submitted',
             isApproved: req.user.vendorProfile?.isApproved || false
         }
     });
@@ -76,12 +118,15 @@ router.get('/oauth-session', async (req, res) => {
                 email: staff.email,
                 name: staff.name,
                 userName: staff.userName,
+                profilePicture: staff.profilePicture || '',
                 role: staff.role,
                 isVerified: staff.isVerified,
                 createdAt: staff.createdAt,
                 addressCount: Array.isArray(staff.addresses) ? staff.addresses.length : 0,
                 vendorProfile: {
                     storeName: staff.vendorProfile?.storeName || '',
+                    pendingStoreName: staff.vendorProfile?.pendingStoreName || '',
+                    storeNameStatus: staff.vendorProfile?.storeNameStatus || 'not_submitted',
                     isApproved: staff.vendorProfile?.isApproved || false
                 }
             }

@@ -22,6 +22,10 @@ const staffSchema = new mongoose.Schema({
         type: String,
         default: 'New User'
     },
+    profilePicture: {
+        type: String,
+        default: ''
+    },
     // Defines access control for Admin, Vendor, or Customer dashboards
     role: {
         type: String,
@@ -34,6 +38,16 @@ const staffSchema = new mongoose.Schema({
         storeName: { 
             type: String, 
             trim: true 
+        },
+        pendingStoreName: {
+            type: String,
+            trim: true,
+            default: ''
+        },
+        storeNameStatus: {
+            type: String,
+            enum: ['not_submitted', 'pending', 'approved', 'rejected'],
+            default: 'not_submitted'
         },
         storeDescription: { 
             type: String 

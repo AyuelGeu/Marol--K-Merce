@@ -1,16 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { getDashboardPath } from '../utils/roleRoutes';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
-export default function Login() {
+export default function Login({ isModal = false, onClose }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isModal) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose?.();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isModal, onClose]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -61,17 +71,25 @@ export default function Login() {
   };
 
   return (
-    <div style={{
+    <div
+      onClick={isModal ? (event) => {
+        if (event.target === event.currentTarget) onClose?.();
+      } : undefined}
+      style={{
       minHeight: '100vh',
       display: 'flex',
       alignItems: 'center',
-      justify: 'center',
-      backgroundColor: '#090d16',
-      backgroundImage: 'radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.15) 0%, transparent 40%), radial-gradient(circle at 85% 85%, rgba(217, 70, 239, 0.15) 0%, transparent 40%)',
+      justifyContent: 'center',
+      backgroundColor: isModal ? 'rgba(3, 7, 18, 0.62)' : '#090d16',
+      backgroundImage: isModal ? 'none' : 'radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.15) 0%, transparent 40%), radial-gradient(circle at 85% 85%, rgba(217, 70, 239, 0.15) 0%, transparent 40%)',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
       padding: '20px',
-      position: 'relative',
-      overflow: 'hidden'
+      position: isModal ? 'fixed' : 'relative',
+      inset: isModal ? 0 : undefined,
+      zIndex: isModal ? 1000 : undefined,
+      overflow: isModal ? 'auto' : 'hidden',
+      backdropFilter: isModal ? 'blur(3px)' : undefined,
+      boxSizing: 'border-box'
     }}>
       <style>{`
         @keyframes floatGlow {
@@ -158,6 +176,30 @@ export default function Login() {
         borderRadius: '50%', background: 'radial-gradient(circle, rgba(217,70,239,0.2) 0%, rgba(0,0,0,0) 70%)',
         animation: 'floatGlow 10s ease-in-out infinite reverse', pointerEvents: 'none'
       }} />
+      {isModal && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close login"
+          style={{
+            position: 'fixed',
+            top: '18px',
+            right: '20px',
+            zIndex: 2,
+            width: '42px',
+            height: '42px',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '50%',
+            background: 'rgba(15, 23, 42, 0.8)',
+            color: '#fff',
+            cursor: 'pointer',
+            fontSize: '25px',
+            lineHeight: 1
+          }}
+        >
+          ×
+        </button>
+      )}
 
       {/* Main Glassmorphic Form Card */}
       <div className="flashy-card" style={{
@@ -169,7 +211,9 @@ export default function Login() {
         border: '1px solid rgba(255, 255, 255, 0.1)',
         textAlign: 'center',
         boxSizing: 'border-box',
-        zIndex: 1
+        zIndex: 1,
+        maxHeight: isModal ? 'calc(100vh - 40px)' : undefined,
+        overflowY: isModal ? 'auto' : undefined
       }}>
         
         {/* Animated Icon Header */}

@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
-export default function Register() {
+export default function Register({ isModal = false, onClose }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,6 +13,16 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isModal) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose?.();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isModal, onClose]);
 
   const calculateStrength = (pass) => {
     let score = 0;
@@ -62,14 +72,56 @@ export default function Register() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      backgroundColor: '#020617', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', padding: '20px'
-    }}>
+    <div
+      onClick={isModal ? (event) => {
+        if (event.target === event.currentTarget) onClose?.();
+      } : undefined}
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: isModal ? 'fixed' : 'relative',
+        inset: isModal ? 0 : undefined,
+        zIndex: isModal ? 1000 : undefined,
+        overflow: isModal ? 'auto' : undefined,
+        backgroundColor: isModal ? 'rgba(3, 7, 18, 0.62)' : '#020617',
+        backdropFilter: isModal ? 'blur(3px)' : undefined,
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+        padding: '20px',
+        boxSizing: 'border-box'
+      }}
+    >
+      {isModal && (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close registration"
+          style={{
+            position: 'fixed',
+            top: '18px',
+            right: '20px',
+            zIndex: 2,
+            width: '42px',
+            height: '42px',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '50%',
+            background: 'rgba(15, 23, 42, 0.8)',
+            color: '#fff',
+            cursor: 'pointer',
+            fontSize: '25px',
+            lineHeight: 1
+          }}
+        >
+          ×
+        </button>
+      )}
       <div style={{
         background: 'linear-gradient(180deg, #8D735C 0%, #4A3C35 45%, #141211 100%)', 
         borderRadius: '24px', padding: '40px', width: '100%',
-        maxWidth: '440px', boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.5)', border: '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center', boxSizing: 'border-box'
+        maxWidth: '440px', maxHeight: isModal ? 'calc(100vh - 40px)' : undefined,
+        overflowY: isModal ? 'auto' : undefined,
+        boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.5)', border: '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center', boxSizing: 'border-box'
       }}>
         
         <div style={{

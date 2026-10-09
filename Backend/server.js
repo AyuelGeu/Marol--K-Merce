@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 const jwt = require('jsonwebtoken'); // Required for JWT verification
 
 // --- Additional Imports for Social Login ---
@@ -20,6 +21,7 @@ const Staff = require('./models/Staff');
 // Import your Staff routes here once created
 // const staffRoutes = require('./routes/staffRoutes'); 
 const authRoutes = require('./routes/authRoutes');
+const marketplaceRoutes = require('./routes/marketplaceRoutes');
 
 const app = express();
 
@@ -38,6 +40,7 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // Added for TikTok CSRF state token
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- Session & Passport Middleware ---
 const secureSessionCookie = process.env.NODE_ENV === 'production' ||
@@ -195,6 +198,7 @@ const requireDoubleLayerAuth = async (req, res, next) => {
 // --- API Routes ---
 // app.use('/api/staff', staffRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/marketplace', marketplaceRoutes);
 
 // Endpoint for Dashboard Analytics
 // Protected this route with the double layer security middleware
