@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const jwt = require('jsonwebtoken'); // Required for JWT verification
+const mpesaRoutes = require('./routes/mpesaRoutes');
 
 // --- Additional Imports for Social Login ---
 const axios = require('axios');
@@ -199,7 +200,7 @@ const requireDoubleLayerAuth = async (req, res, next) => {
 // app.use('/api/staff', staffRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
-
+app.use('/api/mpesa', mpesaRoutes);
 // Endpoint for Dashboard Analytics
 // Protected this route with the double layer security middleware
 app.get('/api/users', requireDoubleLayerAuth, async(req, res) => {

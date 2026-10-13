@@ -71,9 +71,9 @@ export default function CustomerDashboard() {
           withCredentials: true
         }
       );
-      setOrders((currentOrders) => currentOrders.map((order) => (
-        order._id === orderId ? response.data : order
-      )));
+      if (response.data.status === 'cancelled') {
+        setOrders((currentOrders) => currentOrders.filter((order) => order._id !== orderId));
+      }
     } catch (error) {
       setOrderActionError(error.response?.data?.message || 'Unable to cancel this order. Please try again.');
     } finally {
@@ -226,7 +226,7 @@ export default function CustomerDashboard() {
                         </div>
                       ))}
                     </div>
-                    <footer><span>Order total</span><strong>${order.total.toFixed(2)}</strong></footer>
+                    <footer><span>Order total</span><strong>KSh {order.total.toFixed(2)}</strong></footer>
                     {order.status === 'pending' && (
                       <button
                         className="customer-order-cancel"

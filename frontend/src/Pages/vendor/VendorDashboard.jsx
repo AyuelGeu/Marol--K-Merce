@@ -38,14 +38,16 @@ export default function VendorDashboard() {
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [isPublishingProduct, setIsPublishingProduct] = useState(false);
+  const [editingProductId, setEditingProductId] = useState('');
+  const [productImage, setProductImage] = useState(null);
+  const [productImageInputKey, setProductImageInputKey] = useState(0);
   const [productError, setProductError] = useState('');
   const [productMessage, setProductMessage] = useState('');
   const [productForm, setProductForm] = useState({
     name: '',
     description: '',
     category: '',
-    price: '',
-    imageUrl: ''
+    price: ''
   });
   const navigate = useNavigate();
   const vendorProfile = user.vendorProfile || {};
@@ -118,24 +120,73 @@ export default function VendorDashboard() {
     setProductError('');
     setProductMessage('');
     try {
-      const response = await axios.post(`${BACKEND_URL}/api/marketplace/products`, {
-        ...productForm,
-        price: Number(productForm.price)
-      }, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('jwt_token')}`,
-          'ngrok-skip-browser-warning': 'true'
-        },
-        withCredentials: true
-      });
-      setProducts((current) => [response.data, ...current]);
-      setProductForm({ name: '', description: '', category: '', price: '', imageUrl: '' });
-      setProductMessage('Product published to the marketplace.');
+      const productData = new FormData();
+      productData.append('name', productForm.name);
+      productData.append('description', productForm.description);
+      productData.append('category', productForm.category);
+      productData.append('price', String(Number(productForm.price)));
+      if (productImage) {
+        productData.append('image', productImage);
+      }
+
+      const request = editingProductId
+        ? axios.put(`${BACKEND_URL}/api/marketplace/products/${editingProductId}`, productData, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('jwt_token')}`,
+            'ngrok-skip-browser-warning': 'true'
+          },
+          withCredentials: true
+        })
+        : axios.post(`${BACKEND_URL}/api/marketplace/products`, productData, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('jwt_token')}`,
+            'ngrok-skip-browser-warning': 'true'
+          },
+          withCredentials: true
+        });
+      const response = await request;
+      if (editingProductId) {
+        setProducts((current) => current.map((product) => (
+          product._id === editingProductId ? response.data : product
+        )));
+        setProductMessage('Product updated successfully.');
+      } else {
+        setProducts((current) => [response.data, ...current]);
+        setProductMessage('Product published to the marketplace.');
+      }
+      setEditingProductId('');
+      setProductForm({ name: '', description: '', category: '', price: '' });
+      setProductImage(null);
+      setProductImageInputKey((key) => key + 1);
     } catch (error) {
-      setProductError(error.response?.data?.message || 'Unable to publish your product. Please try again.');
+      setProductError(error.response?.data?.message || 'Unable to save your product. Please try again.');
     } finally {
       setIsPublishingProduct(false);
     }
+  };
+
+  const editProduct = (product) => {
+    setEditingProductId(product._id);
+    setProductForm({
+      name: product.name,
+      description: product.description || '',
+      category: product.category,
+      price: String(product.price)
+    });
+    setProductImage(null);
+    setProductImageInputKey((key) => key + 1);
+    setProductError('');
+    setProductMessage('');
+    document.getElementById('vendor-product-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  const cancelProductEdit = () => {
+    setEditingProductId('');
+    setProductForm({ name: '', description: '', category: '', price: '' });
+    setProductImage(null);
+    setProductImageInputKey((key) => key + 1);
+    setProductError('');
+    setProductMessage('');
   };
 
   const saveStoreName = async (event) => {
@@ -327,7 +378,7 @@ export default function VendorDashboard() {
               <div>
                 <div className="workspace-eyebrow">YOUR CATALOG</div>
                 <h2>Products</h2>
-                <p>Publish products customers can discover and order from your store.</p>
+                <p>Publish products customers can discover and update your catalog at any time.</p>
               </div>
               <span className="workspace-status-pill is-approved">{products.length} listed</span>
             </div>
@@ -342,7 +393,7 @@ export default function VendorDashboard() {
                     : 'Add and submit a store name before publishing products.'}
               </p>
             )}
-            <form className="vendor-product-form" onSubmit={publishProduct}>
+            <form className="vendor-product-form" id="vendor-product-form" onSubmit={publishProduct}>
               <div className="vendor-product-form-grid">
                 <label>
                   Product name
@@ -353,12 +404,22 @@ export default function VendorDashboard() {
                   <input name="category" value={productForm.category} onChange={updateProductForm} maxLength={60} required />
                 </label>
                 <label>
-                  Price
-                  <input name="price" type="number" min="0.01" step="0.01" value={productForm.price} onChange={updateProductForm} required />
+                  Price (KSh)
+                  <input name="price" type="number" min="1" step="1" value={productForm.price} onChange={updateProductForm} required />
                 </label>
-                <label>
-                  Product image URL (optional)
-                  <input name="imageUrl" type="url" value={productForm.imageUrl} onChange={updateProductForm} placeholder="https://…" />
+                <label className="vendor-product-image-field">
+                  Product image (JPG, PNG, WebP, or GIF; max 5 MB)
+                  <input
+                    key={productImageInputKey}
+                    name="image"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={(event) => setProductImage(event.target.files?.[0] || null)}
+                  />
+                  {productImage && <span>Selected: {productImage.name}</span>}
+                  {!productImage && editingProductId && products.find((product) => product._id === editingProductId)?.imageUrl && (
+                    <span>Current image will be kept unless you choose another.</span>
+                  )}
                 </label>
                 <label className="vendor-product-description">
                   Description
@@ -367,8 +428,15 @@ export default function VendorDashboard() {
               </div>
               <div className="vendor-product-submit-row">
                 <button type="submit" disabled={!canListProducts || isPublishingProduct}>
-                  {isPublishingProduct ? 'Publishing…' : 'Publish product'}
+                  {isPublishingProduct
+                    ? editingProductId ? 'Saving…' : 'Publishing…'
+                    : editingProductId ? 'Save changes' : 'Publish product'}
                 </button>
+                {editingProductId && (
+                  <button type="button" onClick={cancelProductEdit} disabled={isPublishingProduct}>
+                    Cancel edit
+                  </button>
+                )}
                 {productError && <span className="vendor-store-name-error" role="alert">{productError}</span>}
                 {productMessage && <span className="vendor-store-name-success" role="status">{productMessage}</span>}
               </div>
@@ -382,11 +450,27 @@ export default function VendorDashboard() {
               <div className="vendor-product-list">
                 {products.map((product) => (
                   <article className="vendor-product-row" key={product._id}>
+                    {product.imageUrl && (
+                      <img
+                        className="vendor-product-thumbnail"
+                        src={new URL(product.imageUrl, BACKEND_URL).toString()}
+                        alt=""
+                      />
+                    )}
                     <div>
                       <strong>{product.name}</strong>
                       <span>{product.category}</span>
                     </div>
-                    <strong>${Number(product.price).toFixed(2)}</strong>
+                    <div className="vendor-product-row-actions">
+                      <strong>KSh {Number(product.price).toFixed(2)}</strong>
+                      <button
+                        type="button"
+                        onClick={() => editProduct(product)}
+                        disabled={!canListProducts || Boolean(editingProductId) || isPublishingProduct}
+                      >
+                        Edit
+                      </button>
+                    </div>
                   </article>
                 ))}
               </div>
@@ -416,7 +500,9 @@ export default function VendorDashboard() {
                         <strong>Order {order.id}</strong>
                         <span>{new Date(order.createdAt).toLocaleString()}</span>
                       </div>
-                      <span className="vendor-order-status">{order.status}</span>
+                      <span className={`vendor-order-status${order.status === 'cancelled' ? ' is-cancelled' : ''}`}>
+                        {order.status}
+                      </span>
                     </div>
                     <p className="vendor-order-customer">
                       Customer: {order.customer.name}{order.customer.email ? ` · ${order.customer.email}` : ''}
@@ -429,7 +515,7 @@ export default function VendorDashboard() {
                         </div>
                       ))}
                     </div>
-                    <div className="vendor-order-total"><span>Your order total</span><strong>${order.total.toFixed(2)}</strong></div>
+                    <div className="vendor-order-total"><span>Your order total</span><strong>KSh {order.total.toFixed(2)}</strong></div>
                   </article>
                 ))}
               </div>

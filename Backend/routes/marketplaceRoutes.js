@@ -1,19 +1,48 @@
 const express = require('express');
+const fs = require('fs/promises');
 const mongoose = require('mongoose');
+const path = require('path');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const Payment = require('../models/Payment');
+const createPaidOrder = require('../utils/createPaidOrder');
 const { protect, authorize } = require('../middleware/authMiddleware');
+const uploadProductImage = require('../middleware/productImageUpload');
 
 const router = express.Router();
+const uploadsDirectory = path.join(__dirname, '..', 'uploads');
 
-const isValidImageUrl = (value) => {
-    if (!value) return true;
+const removeUploadedImage = async (file) => {
+    if (!file) return;
     try {
-        const parsed = new URL(value);
-        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-    } catch {
-        return false;
+        await fs.unlink(path.join(uploadsDirectory, path.basename(file.filename)));
+    } catch (error) {
+        if (error.code !== 'ENOENT') {
+            console.error('Unable to remove an unused product image:', error);
+        }
     }
+};
+
+const getValidatedProductFields = (body) => {
+    const { name, description = '', category, price } = body;
+    const trimmedName = typeof name === 'string' ? name.trim() : '';
+    const trimmedDescription = typeof description === 'string' ? description.trim() : '';
+    const trimmedCategory = typeof category === 'string' ? category.trim() : '';
+    const numericPrice = Number(price);
+
+    if (!trimmedName || trimmedName.length > 120 || trimmedDescription.length > 2000 ||
+        !trimmedCategory || trimmedCategory.length > 60 || !Number.isFinite(numericPrice) ||
+        numericPrice <= 0 || numericPrice > 1000000000 ||
+        !Number.isInteger(numericPrice)) {
+        return null;
+    }
+
+    return {
+        name: trimmedName,
+        description: trimmedDescription,
+        category: trimmedCategory,
+        price: numericPrice
+    };
 };
 
 router.get('/products', async (req, res) => {
@@ -59,100 +88,88 @@ router.get('/vendor/products', protect, authorize('vendor'), async (req, res) =>
     }
 });
 
-router.post('/products', protect, authorize('vendor'), async (req, res) => {
-    const { name, description = '', category, price, imageUrl = '' } = req.body;
-    const trimmedName = typeof name === 'string' ? name.trim() : '';
-    const trimmedDescription = typeof description === 'string' ? description.trim() : '';
-    const trimmedCategory = typeof category === 'string' ? category.trim() : '';
-    const numericPrice = Number(price);
-    const trimmedImageUrl = typeof imageUrl === 'string' ? imageUrl.trim() : '';
-
-    if (!trimmedName || trimmedName.length > 120 || trimmedDescription.length > 2000 ||
-        !trimmedCategory || trimmedCategory.length > 60 || !Number.isFinite(numericPrice) ||
-        numericPrice <= 0 || numericPrice > 1000000000 ||
-        Math.abs(numericPrice * 100 - Math.round(numericPrice * 100)) > 1e-7 ||
-        trimmedImageUrl.length > 2048 || !isValidImageUrl(trimmedImageUrl)) {
-        return res.status(400).json({ message: 'Enter a product name, category, positive price, and valid image URL.' });
+router.post('/products', protect, authorize('vendor'), uploadProductImage, async (req, res) => {
+    const productFields = getValidatedProductFields(req.body);
+    if (!productFields) {
+        await removeUploadedImage(req.file);
+        return res.status(400).json({ message: 'Enter a product name, category, and positive whole-number price.' });
     }
 
     if (!req.user.vendorProfile?.isApproved ||
         req.user.vendorProfile.storeNameStatus !== 'approved' ||
         !req.user.vendorProfile.storeName?.trim()) {
+        await removeUploadedImage(req.file);
         return res.status(403).json({ message: 'Your vendor account and store name must be approved before listing products.' });
     }
 
     try {
         const product = await Product.create({
             vendor: req.user._id,
-            name: trimmedName,
-            description: trimmedDescription,
-            category: trimmedCategory,
-            price: numericPrice,
-            imageUrl: trimmedImageUrl
+            ...productFields,
+            imageUrl: req.productImageUrl || ''
         });
         return res.status(201).json(product);
     } catch (error) {
+        await removeUploadedImage(req.file);
         console.error('Vendor product creation error:', error);
         return res.status(500).json({ message: 'Unable to publish this product' });
     }
 });
 
-router.post('/orders', protect, authorize('customer'), async (req, res) => {
-    const requestedItems = req.body.items;
-    if (!Array.isArray(requestedItems) || requestedItems.length === 0 || requestedItems.length > 50) {
-        return res.status(400).json({ message: 'Add between 1 and 50 products to your order.' });
+router.put('/products/:productId', protect, authorize('vendor'), (req, res, next) => {
+    if (!mongoose.Types.ObjectId.isValid(req.params.productId)) {
+        return res.status(400).json({ message: 'Invalid product ID.' });
     }
+    return next();
+}, uploadProductImage, async (req, res) => {
 
-    const quantitiesByProduct = new Map();
-    for (const item of requestedItems) {
-        if (!item || typeof item.productId !== 'string' ||
-            !mongoose.Types.ObjectId.isValid(item.productId) ||
-            !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 99) {
-            return res.status(400).json({ message: 'Your cart contains an invalid product or quantity.' });
-        }
-        quantitiesByProduct.set(
-            item.productId,
-            (quantitiesByProduct.get(item.productId) || 0) + item.quantity
-        );
-    }
-
-    if ([...quantitiesByProduct.values()].some((quantity) => quantity > 99)) {
-        return res.status(400).json({ message: 'A product quantity cannot exceed 99.' });
+    const productFields = getValidatedProductFields(req.body);
+    if (!productFields) {
+        await removeUploadedImage(req.file);
+        return res.status(400).json({ message: 'Enter a product name, category, and positive whole-number price.' });
     }
 
     try {
-        const products = await Product.find({
-            _id: { $in: [...quantitiesByProduct.keys()] },
-            isActive: true
-        }).populate({
-            path: 'vendor',
-            match: {
-                role: 'vendor',
-                'vendorProfile.isApproved': true,
-                'vendorProfile.storeNameStatus': 'approved',
-                'vendorProfile.storeName': { $ne: '' }
-            },
-            select: 'vendorProfile.storeName'
-        });
-
-        if (products.length !== quantitiesByProduct.size || products.some((product) => !product.vendor)) {
-            return res.status(409).json({ message: 'One or more products are no longer available. Refresh the marketplace and try again.' });
+        const updateFields = { ...productFields };
+        if (req.productImageUrl) {
+            updateFields.imageUrl = req.productImageUrl;
         }
 
-        const items = products.map((product) => ({
-            product: product._id,
-            vendor: product.vendor._id,
-            productName: product.name,
-            storeName: product.vendor.vendorProfile.storeName,
-            unitPrice: product.price,
-            quantity: quantitiesByProduct.get(product._id.toString())
-        }));
-        const total = Number(items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0).toFixed(2));
-        const order = await Order.create({
+        const product = await Product.findOneAndUpdate(
+            { _id: req.params.productId, vendor: req.user._id },
+            { $set: updateFields },
+            { new: true, runValidators: true }
+        );
+        if (!product) {
+            await removeUploadedImage(req.file);
+            return res.status(404).json({ message: 'Product not found in your catalog.' });
+        }
+
+        return res.status(200).json(product);
+    } catch (error) {
+        await removeUploadedImage(req.file);
+        console.error('Vendor product update error:', error);
+        return res.status(500).json({ message: 'Unable to update this product' });
+    }
+});
+
+router.post('/orders', protect, authorize('customer'), async (req, res) => {
+    const { paymentId } = req.body;
+    if (typeof paymentId !== 'string' || !mongoose.Types.ObjectId.isValid(paymentId)) {
+        return res.status(402).json({ message: 'Complete M-Pesa payment before placing this order.' });
+    }
+
+    try {
+        const payment = await Payment.findOne({
+            _id: paymentId,
             customer: req.user._id,
-            items,
-            total
+            status: 'paid'
         });
+        if (!payment) {
+            return res.status(402).json({ message: 'Payment must be confirmed before placing this order.' });
+        }
+
+        const order = await createPaidOrder(payment);
 
         return res.status(201).json({
             id: order._id,
@@ -161,14 +178,17 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
             createdAt: order.createdAt
         });
     } catch (error) {
-        console.error('Customer order creation error:', error);
+        console.error('Paid customer order creation error:', error);
         return res.status(500).json({ message: 'Unable to place your order' });
     }
 });
 
 router.get('/orders/mine', protect, authorize('customer'), async (req, res) => {
     try {
-        const orders = await Order.find({ customer: req.user._id }).sort({ createdAt: -1 });
+        const orders = await Order.find({
+            customer: req.user._id,
+            status: { $ne: 'cancelled' }
+        }).sort({ createdAt: -1 });
         return res.status(200).json(orders);
     } catch (error) {
         console.error('Customer order listing error:', error);

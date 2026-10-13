@@ -52,6 +52,12 @@ const orderSchema = new mongoose.Schema({
         required: true,
         min: 0
     },
+    payment: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Payment',
+        unique: true,
+        sparse: true
+    },
     status: {
         type: String,
         enum: ['pending', 'processing', 'completed', 'cancelled'],

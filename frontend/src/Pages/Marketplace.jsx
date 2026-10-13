@@ -5,6 +5,7 @@ import './Marketplace.css';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const CART_STORAGE_KEY = 'marketplace_cart';
+const PAYMENT_STORAGE_KEY = 'marketplace_pending_payment';
 
 function readStoredCart() {
   try {
@@ -34,11 +35,27 @@ export default function Marketplace() {
   const [category, setCategory] = useState('All categories');
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [orderError, setOrderError] = useState('');
-  const [orderSuccess, setOrderSuccess] = useState('');
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [paymentPhone, setPaymentPhone] = useState(() => {
+    const currentUser = readCurrentUser();
+    return currentUser.phone || currentUser.phoneNumber || '';
+  });
+  const [isPaying, setIsPaying] = useState(false);
+  const [pendingPaymentId, setPendingPaymentId] = useState(
+    () => localStorage.getItem(PAYMENT_STORAGE_KEY) || ''
+  );
+  const [paymentError, setPaymentError] = useState('');
+  const [paymentSuccess, setPaymentSuccess] = useState('');
   const user = readCurrentUser();
   const isCustomer = user.role === 'customer' && Boolean(localStorage.getItem('jwt_token'));
+
+  const normalizeMpesaPhone = (value) => {
+    const cleaned = String(value || '').replace(/\D/g, '');
+    if (!cleaned) return '';
+    if (cleaned.startsWith('254')) return cleaned;
+    if (cleaned.startsWith('0')) return `254${cleaned.slice(1)}`;
+    if (cleaned.startsWith('+254')) return cleaned.replace('+', '');
+    return cleaned;
+  };
 
   useEffect(() => {
     let isCurrent = true;
@@ -66,6 +83,61 @@ export default function Marketplace() {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
   }, [cartItems]);
 
+  useEffect(() => {
+    if (pendingPaymentId) {
+      localStorage.setItem(PAYMENT_STORAGE_KEY, pendingPaymentId);
+    } else {
+      localStorage.removeItem(PAYMENT_STORAGE_KEY);
+    }
+  }, [pendingPaymentId]);
+
+  useEffect(() => {
+    if (!pendingPaymentId) return undefined;
+
+    let isCurrent = true;
+    const checkPaymentStatus = async () => {
+      try {
+        const response = await axios.get(
+          `${BACKEND_URL}/api/mpesa/status/${pendingPaymentId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('jwt_token')}`,
+              'ngrok-skip-browser-warning': 'true'
+            },
+            withCredentials: true
+          }
+        );
+
+        if (!isCurrent) return;
+        if (response.data.status === 'paid' && response.data.order) {
+          setCartItems([]);
+          setPaymentError('');
+          setPaymentSuccess(`Payment received. Order ${response.data.order.id} has been placed.`);
+          setPendingPaymentId('');
+        } else if (response.data.status === 'failed') {
+          setPaymentSuccess('');
+          setPaymentError(response.data.resultDesc || 'M-Pesa payment was not completed. You can try again.');
+          setPendingPaymentId('');
+        } else if (response.data.status === 'review') {
+          setPaymentSuccess('');
+          setPaymentError('Payment details need verification. No order was placed; please contact support.');
+          setPendingPaymentId('');
+        }
+      } catch (error) {
+        if (isCurrent) {
+          setPaymentError(error.response?.data?.message || 'Unable to check payment status. Retrying…');
+        }
+      }
+    };
+
+    checkPaymentStatus();
+    const intervalId = window.setInterval(checkPaymentStatus, 3000);
+    return () => {
+      isCurrent = false;
+      window.clearInterval(intervalId);
+    };
+  }, [pendingPaymentId]);
+
   const categories = useMemo(
     () => ['All categories', ...new Set(products.map((product) => product.category))],
     [products]
@@ -81,8 +153,8 @@ export default function Marketplace() {
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
 
   const addToCart = (product) => {
-    setOrderError('');
-    setOrderSuccess('');
+    setPaymentError('');
+    setPaymentSuccess('');
     setCartItems((items) => {
       const existing = items.find((item) => item.id === product.id);
       if (existing) {
@@ -98,22 +170,33 @@ export default function Marketplace() {
     setCartItems((items) => items
       .map((item) => item.id === productId ? { ...item, quantity: item.quantity + change } : item)
       .filter((item) => item.quantity > 0));
-    setOrderError('');
-    setOrderSuccess('');
+    setPaymentError('');
+    setPaymentSuccess('');
   };
 
-  const placeOrder = async () => {
+  const payWithMpesa = async () => {
     if (!isCustomer) {
-      setOrderError('Sign in with a customer account to place an order.');
+      setPaymentError('Sign in with a customer account to pay.');
       return;
     }
-    if (cartItems.length === 0) return;
+    if (cartItems.length === 0) {
+      setPaymentError('Add items to your cart before paying.');
+      return;
+    }
 
-    setIsPlacingOrder(true);
-    setOrderError('');
-    setOrderSuccess('');
+    const sanitizedPhone = normalizeMpesaPhone(paymentPhone || user.phone || user.phoneNumber || '');
+    if (!/^254[17]\d{8}$/.test(sanitizedPhone)) {
+      setPaymentError('Enter a valid M-Pesa number in the format 2547XXXXXXXX.');
+      return;
+    }
+
+    setIsPaying(true);
+    setPaymentError('');
+    setPaymentSuccess('');
+
     try {
-      const response = await axios.post(`${BACKEND_URL}/api/marketplace/orders`, {
+      const response = await axios.post(`${BACKEND_URL}/api/mpesa/stkpush`, {
+        phoneNumber: sanitizedPhone,
         items: cartItems.map((item) => ({ productId: item.id, quantity: item.quantity }))
       }, {
         headers: {
@@ -122,12 +205,16 @@ export default function Marketplace() {
         },
         withCredentials: true
       });
-      setCartItems([]);
-      setOrderSuccess(`Order ${response.data.id} was placed and is awaiting seller confirmation.`);
+
+      setPaymentSuccess(`${response.data.message} Total: KSh ${Number(response.data.amount).toFixed(2)}.`);
+      setPendingPaymentId(response.data.paymentId);
     } catch (error) {
-      setOrderError(error.response?.data?.message || 'Unable to place this order. Please try again.');
+      setPaymentError(error.response?.data?.error || 'Unable to start M-Pesa payment. Please try again.');
+      if (error.response?.data?.paymentId) {
+        setPendingPaymentId(error.response.data.paymentId);
+      }
     } finally {
-      setIsPlacingOrder(false);
+      setIsPaying(false);
     }
   };
 
@@ -186,7 +273,11 @@ export default function Marketplace() {
             {visibleProducts.map((product) => (
               <article className="marketplace-product-card" key={product.id}>
                 {product.imageUrl
-                  ? <img className="marketplace-product-image" src={product.imageUrl} alt={product.name} />
+                  ? <img
+                    className="marketplace-product-image"
+                    src={new URL(product.imageUrl, BACKEND_URL).toString()}
+                    alt={product.name}
+                  />
                   : <div className="marketplace-product-placeholder" aria-hidden="true">◇</div>}
                 <div className="marketplace-product-content">
                   <span className="marketplace-product-category">{product.category}</span>
@@ -194,8 +285,14 @@ export default function Marketplace() {
                   {product.description && <p>{product.description}</p>}
                   <span className="marketplace-store-name">Sold by {product.storeName}</span>
                   <div className="marketplace-product-buy">
-                    <strong>${Number(product.price).toFixed(2)}</strong>
-                    <button type="button" onClick={() => addToCart(product)}>Add to cart</button>
+                    <strong>KSh {Number(product.price).toFixed(2)}</strong>
+                    <button
+                      type="button"
+                      disabled={isPaying || Boolean(pendingPaymentId)}
+                      onClick={() => addToCart(product)}
+                    >
+                      Add to cart
+                    </button>
                   </div>
                 </div>
               </article>
@@ -217,12 +314,22 @@ export default function Marketplace() {
                   <div>
                     <strong>{item.name}</strong>
                     <span>{item.storeName}</span>
-                    <span>${Number(item.price).toFixed(2)} each</span>
+                    <span>KSh {Number(item.price).toFixed(2)} each</span>
                   </div>
                   <div className="marketplace-quantity">
-                    <button type="button" onClick={() => updateQuantity(item.id, -1)} aria-label={`Remove one ${item.name}`}>−</button>
+                    <button
+                      type="button"
+                      disabled={isPaying || Boolean(pendingPaymentId)}
+                      onClick={() => updateQuantity(item.id, -1)}
+                      aria-label={`Remove one ${item.name}`}
+                    >−</button>
                     <span>{item.quantity}</span>
-                    <button type="button" onClick={() => updateQuantity(item.id, 1)} aria-label={`Add one ${item.name}`}>+</button>
+                    <button
+                      type="button"
+                      disabled={isPaying || Boolean(pendingPaymentId)}
+                      onClick={() => updateQuantity(item.id, 1)}
+                      aria-label={`Add one ${item.name}`}
+                    >+</button>
                   </div>
                 </article>
               ))}
@@ -230,22 +337,36 @@ export default function Marketplace() {
           )}
           <div className="marketplace-cart-total">
             <span>Estimated total</span>
-            <strong>${cartTotal.toFixed(2)}</strong>
+            <strong>KSh {cartTotal.toFixed(2)}</strong>
           </div>
-          <p className="marketplace-payment-note">Orders are recorded as pending. Online payment is not set up yet.</p>
-          <button
-            className="marketplace-place-order"
-            type="button"
-            disabled={!cartItems.length || isPlacingOrder}
-            onClick={placeOrder}
-          >
-            {isPlacingOrder ? 'Placing order…' : 'Place order'}
-          </button>
-          {!isCustomer && <span className="marketplace-signin-hint">Customer sign-in is required to order.</span>}
-          {orderError && <p className="marketplace-error" role="alert">{orderError}</p>}
-          {orderSuccess && (
+
+          <div className="marketplace-payment-form">
+            <label htmlFor="mpesa-phone" className="marketplace-payment-label">M-Pesa phone number</label>
+            <input
+              id="mpesa-phone"
+              type="tel"
+              inputMode="numeric"
+              value={paymentPhone}
+              onChange={(event) => setPaymentPhone(event.target.value)}
+              placeholder="2547XXXXXXXX"
+            />
+            <button
+              className="marketplace-payment-button"
+              type="button"
+              disabled={!cartItems.length || isPaying || Boolean(pendingPaymentId)}
+              onClick={payWithMpesa}
+            >
+              {isPaying ? 'Starting payment…' : pendingPaymentId ? 'Waiting for payment…' : 'Pay with M-Pesa'}
+            </button>
+          </div>
+
+          <p className="marketplace-payment-note">Your order is placed only after M-Pesa confirms payment. Approve the prompt sent to your phone.</p>
+          {!isCustomer && <span className="marketplace-signin-hint">Customer sign-in is required to pay and order.</span>}
+          {paymentError && <p className="marketplace-error" role="alert">{paymentError}</p>}
+          {paymentSuccess && (
             <p className="marketplace-success" role="status">
-              {orderSuccess} <Link to="/customer/dashboard#orders">View my orders</Link>
+              {paymentSuccess}
+              {!pendingPaymentId && <Link to="/customer/dashboard#orders"> View my orders</Link>}
             </p>
           )}
         </aside>
