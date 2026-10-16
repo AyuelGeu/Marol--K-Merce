@@ -40,6 +40,7 @@ export default function ResetPassword() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#020617', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', padding: '20px' }}>
       <div style={{ background: 'linear-gradient(180deg, #8D735C 0%, #4A3C35 45%, #141211 100%)', borderRadius: '24px', padding: '40px', width: '100%', maxWidth: '440px', boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.5)', border: '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center', boxSizing: 'border-box' }}>
+        <img src="/brand-logo.png" alt="K-Merce" style={{ display: 'block', width: '88px', height: '80px', objectFit: 'contain', margin: '0 auto 18px' }} />
         <h2 style={{ fontSize: '28px', fontWeight: '700', color: '#FFFFFF', margin: '0 0 8px 0' }}>New Password</h2>
         
         <form onSubmit={handleReset} style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '20px' }}>

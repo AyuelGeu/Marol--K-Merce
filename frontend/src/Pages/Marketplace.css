@@ -20,10 +20,18 @@
 }
 
 .marketplace-brand {
+  display: flex;
+  align-items: center;
   color: #252d40;
   font-size: 20px;
   font-weight: 800;
   text-decoration: none;
+}
+
+.marketplace-brand img {
+  width: 62px;
+  height: 58px;
+  object-fit: contain;
 }
 
 .marketplace-header nav {
@@ -324,6 +332,13 @@
   line-height: 1.5;
 }
 
+.marketplace-error {
+  margin: 10px 0 0;
+  color: #b42318;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .marketplace-place-order {
   width: 100%;
   min-height: 41px;
@@ -390,25 +405,18 @@
   cursor: not-allowed;
 }
 
-.marketplace-error,
 .marketplace-success {
   margin: 10px 0 0;
+  color: #27805e;
   font-size: 11px;
   line-height: 1.5;
-}
-
-.marketplace-error {
-  color: #b42318;
-}
-
-.marketplace-success {
-  color: #27805e;
 }
 
 .marketplace-success a {
   color: #27805e;
   font-weight: 700;
 }
+
 
 .marketplace-empty {
   display: grid;

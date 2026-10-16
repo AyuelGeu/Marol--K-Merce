@@ -186,6 +186,7 @@ exports.updateProfilePicture = async (req, res) => {
 
     try {
         req.user.profilePicture = profilePicture;
+        req.user.profilePictureSource = 'upload';
         await req.user.save();
     } catch (error) {
         try {
@@ -237,7 +238,7 @@ exports.updateVendorStoreName = async (req, res) => {
                     'vendorProfile.storeNameStatus': 'pending'
                 }
             },
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true } // <-- Updated to modern Mongoose standard
         );
 
         if (!vendor) {

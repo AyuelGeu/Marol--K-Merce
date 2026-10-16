@@ -73,7 +73,7 @@ export default function OtpVerification() {
         backgroundColor: '#FFFFFF', borderRadius: '24px', padding: '40px', width: '100%',
         maxWidth: '440px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)', border: '1px solid #F3F4F6', textAlign: 'center', boxSizing: 'border-box'
       }}>
-        
+        <img src="/brand-logo.png" alt="K-Merce" style={{ display: 'block', width: '88px', height: '80px', objectFit: 'contain', margin: '0 auto 18px' }} />
         <div style={{
           width: '48px', height: '48px', backgroundColor: '#EFF6FF', borderRadius: '12px',
           display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px auto', color: '#2563EB'

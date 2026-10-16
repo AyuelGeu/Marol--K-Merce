@@ -4,7 +4,6 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const jwt = require('jsonwebtoken'); // Required for JWT verification
-const mpesaRoutes = require('./routes/mpesaRoutes');
 
 // --- Additional Imports for Social Login ---
 const axios = require('axios');
@@ -23,7 +22,7 @@ const Staff = require('./models/Staff');
 // const staffRoutes = require('./routes/staffRoutes'); 
 const authRoutes = require('./routes/authRoutes');
 const marketplaceRoutes = require('./routes/marketplaceRoutes');
-
+const mpesaRoutes = require('./routes/mpesaRoutes');
 const app = express();
 
 // --- CRITICAL FIX FOR NGROK ---
@@ -42,7 +41,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); // Added for TikTok CSRF state token
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
+app.use('/api/mpesa', mpesaRoutes); // M-Pesa routes
 // --- Session & Passport Middleware ---
 const secureSessionCookie = process.env.NODE_ENV === 'production' ||
     (process.env.BACKEND_URL || '').startsWith('https://');
@@ -69,6 +68,7 @@ passport.use(new GoogleStrategy({
     async(accessToken, refreshToken, profile, done) => {
         try {
             const email = profile.emails?.[0]?.value?.trim().toLowerCase();
+            const googleProfilePicture = profile.photos?.[0]?.value || '';
             if (!email) {
                 return done(new Error('Google account did not provide an email address'));
             }
@@ -78,8 +78,17 @@ passport.use(new GoogleStrategy({
             });
 
             if (existingStaff) {
+                let profileChanged = false;
                 if (!existingStaff.googleId) {
                     existingStaff.googleId = profile.id;
+                    profileChanged = true;
+                }
+                if (googleProfilePicture) {
+                    existingStaff.profilePicture = googleProfilePicture;
+                    existingStaff.profilePictureSource = 'google';
+                    profileChanged = true;
+                }
+                if (profileChanged) {
                     await existingStaff.save();
                 }
                 return done(null, existingStaff);
@@ -88,6 +97,8 @@ passport.use(new GoogleStrategy({
                     googleId: profile.id,
                     email,
                     name: profile.displayName,
+                    profilePicture: googleProfilePicture,
+                    profilePictureSource: googleProfilePicture ? 'google' : '',
                     isVerified: true
                 }).save();
 
@@ -200,7 +211,6 @@ const requireDoubleLayerAuth = async (req, res, next) => {
 // app.use('/api/staff', staffRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
-app.use('/api/mpesa', mpesaRoutes);
 // Endpoint for Dashboard Analytics
 // Protected this route with the double layer security middleware
 app.get('/api/users', requireDoubleLayerAuth, async(req, res) => {

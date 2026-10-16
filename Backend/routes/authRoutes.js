@@ -58,7 +58,7 @@ router.put('/admin/vendors/:vendorId/approval', protect, authorize('admin'), asy
         const vendor = await Staff.findOneAndUpdate(
             { _id: req.params.vendorId, role: 'vendor' },
             { $set: { 'vendorProfile.isApproved': true } },
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         );
         if (!vendor) {
             return res.status(404).json({ message: 'Vendor account was not found' });

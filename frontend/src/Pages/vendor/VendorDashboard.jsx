@@ -52,6 +52,9 @@ export default function VendorDashboard() {
   const navigate = useNavigate();
   const vendorProfile = user.vendorProfile || {};
   const displayName = user.name && user.name !== 'New User' ? user.name : 'Vendor';
+  const profilePictureUrl = user.profilePicture
+    ? new URL(user.profilePicture, BACKEND_URL).toString()
+    : '';
   const joinedDate = user.createdAt
     ? new Date(user.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
     : 'Member';
@@ -240,7 +243,7 @@ export default function VendorDashboard() {
     <div className="workspace-shell vendor-workspace">
       <aside className="workspace-sidebar">
         <Link className="workspace-brand" to="/vendor/dashboard">
-          <span className="workspace-brand-mark">K</span>
+          <span className="workspace-brand-mark"><img src="/brand-logo.png" alt="" /></span>
           <span className="workspace-brand-copy"><strong>K-MERCE</strong><small>SELLER WORKSPACE</small></span>
         </Link>
         <div className="workspace-nav-label">YOUR WORKSPACE</div>
@@ -261,7 +264,11 @@ export default function VendorDashboard() {
         <header className="workspace-topbar">
           <div className="workspace-breadcrumb">Seller workspace <span>/</span> Overview</div>
           <div className="workspace-user-menu">
-            <span className="workspace-user-avatar vendor-avatar">{(displayName[0] || 'V').toUpperCase()}</span>
+            <span className="workspace-user-avatar vendor-avatar">
+              {profilePictureUrl
+                ? <img src={profilePictureUrl} alt="" />
+                : (displayName[0] || 'V').toUpperCase()}
+            </span>
             <span className="workspace-user-copy"><strong>{displayName}</strong><small>Vendor account</small></span>
             <button className="workspace-signout" type="button" onClick={signOut}>Sign out</button>
           </div>

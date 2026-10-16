@@ -50,10 +50,9 @@ export default function Marketplace() {
 
   const normalizeMpesaPhone = (value) => {
     const cleaned = String(value || '').replace(/\D/g, '');
-    if (!cleaned) return '';
     if (cleaned.startsWith('254')) return cleaned;
     if (cleaned.startsWith('0')) return `254${cleaned.slice(1)}`;
-    if (cleaned.startsWith('+254')) return cleaned.replace('+', '');
+    if (/^[17]\d{8}$/.test(cleaned)) return `254${cleaned}`;
     return cleaned;
   };
 
@@ -107,8 +106,8 @@ export default function Marketplace() {
             withCredentials: true
           }
         );
-
         if (!isCurrent) return;
+
         if (response.data.status === 'paid' && response.data.order) {
           setCartItems([]);
           setPaymentError('');
@@ -120,12 +119,20 @@ export default function Marketplace() {
           setPendingPaymentId('');
         } else if (response.data.status === 'review') {
           setPaymentSuccess('');
-          setPaymentError('Payment details need verification. No order was placed; please contact support.');
+          setPaymentError(
+            response.data.resultDesc ||
+            'Payment details need verification. Check your M-Pesa messages or contact support before trying again.'
+          );
           setPendingPaymentId('');
         }
       } catch (error) {
         if (isCurrent) {
-          setPaymentError(error.response?.data?.message || 'Unable to check payment status. Retrying…');
+          if (error.response?.status === 404) {
+            setPendingPaymentId('');
+            setPaymentError('This payment could not be found. Please start checkout again.');
+          } else {
+            setPaymentError(error.response?.data?.message || 'Unable to check payment status. Retrying…');
+          }
         }
       }
     };
@@ -186,14 +193,13 @@ export default function Marketplace() {
 
     const sanitizedPhone = normalizeMpesaPhone(paymentPhone || user.phone || user.phoneNumber || '');
     if (!/^254[17]\d{8}$/.test(sanitizedPhone)) {
-      setPaymentError('Enter a valid M-Pesa number in the format 2547XXXXXXXX.');
+      setPaymentError('Enter a valid Kenyan M-Pesa phone number.');
       return;
     }
 
     setIsPaying(true);
     setPaymentError('');
     setPaymentSuccess('');
-
     try {
       const response = await axios.post(`${BACKEND_URL}/api/mpesa/stkpush`, {
         phoneNumber: sanitizedPhone,
@@ -205,11 +211,14 @@ export default function Marketplace() {
         },
         withCredentials: true
       });
-
-      setPaymentSuccess(`${response.data.message} Total: KSh ${Number(response.data.amount).toFixed(2)}.`);
+      setPaymentSuccess(
+        `${response.data.message} Total: KSh ${Number(response.data.amount).toFixed(2)}.`
+      );
       setPendingPaymentId(response.data.paymentId);
     } catch (error) {
-      setPaymentError(error.response?.data?.error || 'Unable to start M-Pesa payment. Please try again.');
+      setPaymentError(
+        error.response?.data?.error || 'Unable to start M-Pesa payment. Please try again.'
+      );
       if (error.response?.data?.paymentId) {
         setPendingPaymentId(error.response.data.paymentId);
       }
@@ -221,9 +230,11 @@ export default function Marketplace() {
   return (
     <main className="marketplace-page">
       <header className="marketplace-header">
-        <Link className="marketplace-brand" to="/">K-Merce</Link>
+        <Link className="marketplace-brand" to="/" aria-label="K-Merce home">
+          <img src="/brand-logo.png" alt="K-Merce" />
+        </Link>
         <nav aria-label="Marketplace navigation">
-          <Link to="/">Home</Link>
+          <Link to="/customer/dashboard">Home</Link>
           {isCustomer && <Link to="/customer/dashboard#orders">My orders</Link>}
           {user.role === 'vendor' && <Link to="/vendor/dashboard#products">Seller workspace</Link>}
           {!isCustomer && <Link to="/login">Sign in</Link>}
@@ -349,6 +360,7 @@ export default function Marketplace() {
               value={paymentPhone}
               onChange={(event) => setPaymentPhone(event.target.value)}
               placeholder="2547XXXXXXXX"
+              disabled={isPaying || Boolean(pendingPaymentId)}
             />
             <button
               className="marketplace-payment-button"

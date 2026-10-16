@@ -10,6 +10,7 @@ import OAuthCallback from './Auth/OAuthCallback';
 
 //Role-Specific Dashboards
 import AdminDashboard from './Pages/admin/AdminDashboard.jsx';
+import AdminPayments from './Pages/admin/AdminPayments.jsx';
 import VendorDashboard from './Pages/vendor/VendorDashboard.jsx';
 import CustomerDashboard from './Pages/customer/CustomerDashboard.jsx';
 import Marketplace from './Pages/Marketplace.jsx';
@@ -72,6 +73,7 @@ function App() {
         {/*Admin Portal formerly TestDashboard */}
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/payments" element={<AdminPayments />} />
         </Route>
 
         {/*Vendor Portal */}

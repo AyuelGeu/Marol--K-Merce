@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import './AdminDashboard.css';
@@ -22,6 +22,14 @@ function getInitials(name, email) {
 }
 
 export default function AdminDashboard() {
+  const backgroundCanvasRef = useRef(null);
+  const [adminProfilePicture] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user_data'))?.profilePicture || '';
+    } catch {
+      return '';
+    }
+  });
   const [adminName] = useState(() => {
     try {
       const user = JSON.parse(localStorage.getItem('user_data'));
@@ -39,6 +47,115 @@ export default function AdminDashboard() {
   const [approvingVendorId, setApprovingVendorId] = useState('');
   const [vendorApprovalError, setVendorApprovalError] = useState('');
   const navigate = useNavigate();
+  const adminProfilePictureUrl = adminProfilePicture
+    ? new URL(adminProfilePicture, BACKEND_URL).toString()
+    : '';
+
+  useEffect(() => {
+    const canvas = backgroundCanvasRef.current;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context) return undefined;
+
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let animationFrameId = 0;
+    let width = 0;
+    let height = 0;
+    let pointer = null;
+    let particles = [];
+
+    const resizeCanvas = () => {
+      const pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = Math.round(width * pixelRatio);
+      canvas.height = Math.round(height * pixelRatio);
+      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+      const particleCount = Math.min(90, Math.max(28, Math.floor((width * height) / 14000)));
+      particles = Array.from({ length: particleCount }, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        velocityX: (Math.random() - 0.5) * 0.32,
+        velocityY: (Math.random() - 0.5) * 0.32
+      }));
+      drawFrame(false);
+    };
+
+    const drawFrame = (animate) => {
+      context.clearRect(0, 0, width, height);
+      for (let index = 0; index < particles.length; index += 1) {
+        const particle = particles[index];
+        if (animate) {
+          particle.x += particle.velocityX;
+          particle.y += particle.velocityY;
+          if (particle.x < 0 || particle.x > width) particle.velocityX *= -1;
+          if (particle.y < 0 || particle.y > height) particle.velocityY *= -1;
+        }
+
+        for (let otherIndex = index + 1; otherIndex < particles.length; otherIndex += 1) {
+          const other = particles[otherIndex];
+          const distanceX = particle.x - other.x;
+          const distanceY = particle.y - other.y;
+          const distance = Math.hypot(distanceX, distanceY);
+          if (distance < 145) {
+            const opacity = (1 - distance / 145) * 0.25;
+            context.strokeStyle = `rgba(137, 177, 220, ${opacity})`;
+            context.lineWidth = 1;
+            context.beginPath();
+            context.moveTo(particle.x, particle.y);
+            context.lineTo(other.x, other.y);
+            context.stroke();
+          }
+        }
+
+        if (pointer) {
+          const pointerDistance = Math.hypot(particle.x - pointer.x, particle.y - pointer.y);
+          if (pointerDistance < 175) {
+            context.strokeStyle = `rgba(165, 196, 235, ${(1 - pointerDistance / 175) * 0.42})`;
+            context.beginPath();
+            context.moveTo(particle.x, particle.y);
+            context.lineTo(pointer.x, pointer.y);
+            context.stroke();
+          }
+        }
+
+        context.fillStyle = 'rgba(184, 208, 238, 0.45)';
+        context.beginPath();
+        context.arc(particle.x, particle.y, 1.4, 0, Math.PI * 2);
+        context.fill();
+      }
+
+      if (animate) {
+        animationFrameId = window.requestAnimationFrame(() => drawFrame(true));
+      }
+    };
+
+    const updateMotion = () => {
+      window.cancelAnimationFrame(animationFrameId);
+      drawFrame(!motionPreference.matches);
+    };
+    const updatePointer = (event) => {
+      pointer = { x: event.clientX, y: event.clientY };
+    };
+    const clearPointer = (event) => {
+      if (!event.relatedTarget) pointer = null;
+    };
+
+    resizeCanvas();
+    updateMotion();
+    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('pointermove', updatePointer, { passive: true });
+    window.addEventListener('pointerout', clearPointer);
+    motionPreference.addEventListener('change', updateMotion);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('pointermove', updatePointer);
+      window.removeEventListener('pointerout', clearPointer);
+      motionPreference.removeEventListener('change', updateMotion);
+    };
+  }, []);
 
   const fetchUsers = useCallback(async () => {
     const token = localStorage.getItem('jwt_token');
@@ -184,9 +301,14 @@ export default function AdminDashboard() {
 
   return (
     <div className="admin-shell">
+      <canvas
+        ref={backgroundCanvasRef}
+        className="admin-background-animation"
+        aria-hidden="true"
+      />
       <aside className="admin-sidebar">
         <a className="admin-brand" href="/admin/dashboard" aria-label="K-Merce Admin home">
-          <span className="admin-brand-mark">K</span>
+          <span className="admin-brand-mark"><img src="/brand-logo.png" alt="" /></span>
           <span className="admin-brand-copy">
             <strong>K-MERCE</strong>
             <small>ADMIN CONSOLE</small>
@@ -207,6 +329,10 @@ export default function AdminDashboard() {
             <span className="admin-nav-icon">◇</span>
             Vendors
             <span className="admin-nav-count">{counts.vendors}</span>
+          </a>
+          <a className="admin-nav-link" href="/admin/payments">
+            <span className="admin-nav-icon">🪙</span>
+            Payments
           </a>
           <a className="admin-nav-link" href="#store-approvals">
             <span className="admin-nav-icon">!</span>
@@ -241,7 +367,11 @@ export default function AdminDashboard() {
         <header className="admin-topbar">
           <div className="admin-breadcrumb">Workspace <span>/</span> Overview</div>
           <div className="admin-topbar-user">
-            <span className="admin-topbar-avatar">{adminName.charAt(0)}</span>
+            <span className="admin-topbar-avatar">
+              {adminProfilePictureUrl
+                ? <img src={adminProfilePictureUrl} alt="" />
+                : adminName.charAt(0)}
+            </span>
             <span><strong>{adminName}</strong><br /><small>Platform management</small></span>
             <button className="admin-signout-button" type="button" onClick={signOut}>Log out</button>
           </div>
@@ -254,7 +384,12 @@ export default function AdminDashboard() {
               <h1>Good to see you, {adminName}</h1>
               <p>Monitor your marketplace and manage the people who make it thrive.</p>
             </div>
-            <button className="admin-refresh-button" type="button" onClick={refreshUsers} disabled={isLoading}>
+            <button
+              className="admin-refresh-button"
+              type="button"
+              onClick={refreshUsers}
+              disabled={isLoading}
+            >
               <span className={isLoading ? 'admin-refresh-icon is-spinning' : 'admin-refresh-icon'}>↻</span>
               {isLoading ? 'Refreshing' : 'Refresh data'}
             </button>
@@ -431,6 +566,15 @@ export default function AdminDashboard() {
                       <td>
                         <div className="admin-user-cell">
                           <span className={`admin-user-avatar role-${user.role || 'customer'}`}>
+                            {user.profilePicture && (
+                              <img
+                                src={new URL(user.profilePicture, BACKEND_URL).toString()}
+                                alt=""
+                                onError={(event) => {
+                                  event.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            )}
                             {getInitials(user.name || user.userName, user.email)}
                           </span>
                           <span className="admin-user-details">

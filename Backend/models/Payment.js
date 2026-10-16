@@ -32,36 +32,31 @@ const paymentItemSchema = new mongoose.Schema({
 const paymentSchema = new mongoose.Schema({
   merchantRequestID: {
     type: String,
-    sparse: true,
+    sparse: true
   },
   checkoutRequestID: {
     type: String,
-    sparse: true,
+    sparse: true
   },
   resultCode: {
     type: Number,
     required: true,
+    default: -1
   },
   resultDesc: {
     type: String,
     required: true,
+    default: 'Waiting for M-Pesa payment confirmation.'
   },
   amount: {
     type: Number,
     required: true
   },
-  mpesaReceiptNumber: {
-    type: String,
-  },
-  phoneNumber: {
-    type: String,
-  },
-  transactionDate: {
-    type: Date,
-  },
-  timestamp: {
-    type: Date,
-  },
+  mpesaReceiptNumber: String,
+  phoneNumber: String,
+  transactionDate: Date,
+  receiptEmailSentAt: Date,
+  receiptEmailSendingAt: Date,
   customer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Staff',
@@ -78,9 +73,11 @@ const paymentSchema = new mongoose.Schema({
     default: 'pending',
     index: true
   },
+  lastStatusCheckAt: Date,
   order: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Order'
   }
-});
+}, { timestamps: true });
+
 module.exports = mongoose.model('Payment', paymentSchema);

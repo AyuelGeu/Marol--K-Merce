@@ -56,6 +56,7 @@ export default function OAuthCallback() {
       textAlign: 'center'
     }}>
       <section>
+        <img src="/brand-logo.png" alt="K-Merce" style={{ display: 'block', width: '88px', height: '80px', objectFit: 'contain', margin: '0 auto 18px' }} />
         <h1 style={{ fontSize: '24px', margin: '0 0 10px' }}>
           {error ? 'Sign-in could not be completed' : 'Completing sign-in…'}
         </h1>

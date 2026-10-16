@@ -138,7 +138,7 @@ router.put('/products/:productId', protect, authorize('vendor'), (req, res, next
         const product = await Product.findOneAndUpdate(
             { _id: req.params.productId, vendor: req.user._id },
             { $set: updateFields },
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         );
         if (!product) {
             await removeUploadedImage(req.file);
@@ -156,7 +156,7 @@ router.put('/products/:productId', protect, authorize('vendor'), (req, res, next
 router.post('/orders', protect, authorize('customer'), async (req, res) => {
     const { paymentId } = req.body;
     if (typeof paymentId !== 'string' || !mongoose.Types.ObjectId.isValid(paymentId)) {
-        return res.status(402).json({ message: 'Complete M-Pesa payment before placing this order.' });
+        return res.status(402).json({ message: 'A valid confirmed payment is required before placing this order.' });
     }
 
     try {
@@ -180,6 +180,142 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
     } catch (error) {
         console.error('Paid customer order creation error:', error);
         return res.status(500).json({ message: 'Unable to place your order' });
+    }
+});
+
+router.get('/admin/payments', protect, authorize('admin'), async (req, res) => {
+    try {
+        const vendorTotals = await Payment.aggregate([
+            { $unwind: '$items' },
+            {
+                $group: {
+                    _id: {
+                        vendor: '$items.vendor',
+                        storeName: '$items.storeName',
+                        payment: '$_id',
+                        status: '$status'
+                    },
+                    amount: {
+                        $sum: { $multiply: ['$items.unitPrice', '$items.quantity'] }
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        vendor: '$_id.vendor',
+                        storeName: '$_id.storeName'
+                    },
+                    paidAmount: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ['$_id.status', 'paid'] },
+                                '$amount',
+                                0
+                            ]
+                        }
+                    },
+                    pendingAmount: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ['$_id.status', 'pending'] },
+                                '$amount',
+                                0
+                            ]
+                        }
+                    },
+                    reviewAmount: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ['$_id.status', 'review'] },
+                                '$amount',
+                                0
+                            ]
+                        }
+                    },
+                    failedAmount: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ['$_id.status', 'failed'] },
+                                '$amount',
+                                0
+                            ]
+                        }
+                    },
+                    paidTransactions: {
+                        $sum: { $cond: [{ $eq: ['$_id.status', 'paid'] }, 1, 0] }
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'staffs',
+                    localField: '_id.vendor',
+                    foreignField: '_id',
+                    as: 'vendor'
+                }
+            },
+            { $unwind: { path: '$vendor', preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    vendorId: '$_id.vendor',
+                    name: { $ifNull: ['$vendor.name', 'Vendor'] },
+                    email: { $ifNull: ['$vendor.email', ''] },
+                    storeName: '$_id.storeName',
+                    paidAmount: 1,
+                    pendingAmount: 1,
+                    reviewAmount: 1,
+                    failedAmount: 1,
+                    paidTransactions: 1
+                }
+            },
+            { $sort: { paidAmount: -1, name: 1 } }
+        ]);
+
+        const payments = await Payment.find()
+            .sort({ createdAt: -1 })
+            .limit(100)
+            .populate('customer', 'name email')
+            .populate('items.vendor', 'name email vendorProfile.storeName')
+            .lean();
+
+        const recentPayments = payments.map((payment) => {
+            const vendorBreakdown = new Map();
+            for (const item of payment.items || []) {
+                const vendorId = item.vendor?._id?.toString() || item.vendor?.toString();
+                if (!vendorId) continue;
+                const storeName = item.storeName || 'Store';
+                const storeKey = `${vendorId}:${storeName}`;
+
+                const current = vendorBreakdown.get(storeKey) || {
+                    vendorId,
+                    vendorName: item.vendor?.name || 'Vendor',
+                    storeName,
+                    amount: 0
+                };
+                current.amount += item.unitPrice * item.quantity;
+                vendorBreakdown.set(storeKey, current);
+            }
+
+            return {
+                id: payment._id,
+                status: payment.status,
+                amount: payment.amount,
+                receiptNumber: payment.mpesaReceiptNumber || '',
+                transactionDate: payment.transactionDate || payment.createdAt,
+                customerName: payment.customer?.name || 'Customer',
+                customerEmail: payment.customer?.email || '',
+                vendors: [...vendorBreakdown.values()].map((vendor) => ({
+                    ...vendor,
+                    amount: Number(vendor.amount.toFixed(2))
+                }))
+            };
+        });
+
+        return res.status(200).json({ vendorTotals, recentPayments });
+    } catch (error) {
+        console.error('Admin payment tracking error:', error);
+        return res.status(500).json({ message: 'Unable to load payment tracking data.' });
     }
 });
 
@@ -209,7 +345,7 @@ router.put('/orders/:orderId/cancel', protect, authorize('customer'), async (req
                 status: 'pending'
             },
             { $set: { status: 'cancelled' } },
-            { new: true, runValidators: true }
+            { returnDocument: 'after', runValidators: true }
         );
 
         if (order) {

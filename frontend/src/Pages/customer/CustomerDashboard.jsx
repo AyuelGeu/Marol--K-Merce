@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../vendor/RoleDashboard.css';
@@ -6,22 +6,18 @@ import '../vendor/RoleDashboard.css';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 export default function CustomerDashboard() {
-  const [user, setUser] = useState(() => {
+  const [user] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('user_data')) || {};
     } catch {
       return {};
     }
   });
-  const [isUploadingPicture, setIsUploadingPicture] = useState(false);
-  const [pictureMessage, setPictureMessage] = useState('');
-  const [pictureError, setPictureError] = useState('');
   const [orders, setOrders] = useState([]);
   const [ordersError, setOrdersError] = useState('');
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [cancellingOrderId, setCancellingOrderId] = useState('');
   const [orderActionError, setOrderActionError] = useState('');
-  const pictureInputRef = useRef(null);
   const navigate = useNavigate();
   const displayName = user.name && user.name !== 'New User' ? user.name : 'there';
   const joinedDate = user.createdAt
@@ -81,42 +77,6 @@ export default function CustomerDashboard() {
     }
   };
 
-  const uploadProfilePicture = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setPictureError('');
-    setPictureMessage('');
-    if (file.size > 5 * 1024 * 1024) {
-      setPictureError('Choose an image that is 5 MB or smaller.');
-      event.target.value = '';
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('profilePicture', file);
-    setIsUploadingPicture(true);
-
-    try {
-      const response = await axios.put(`${BACKEND_URL}/api/auth/profile-picture`, formData, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('jwt_token')}`,
-          'ngrok-skip-browser-warning': 'true'
-        },
-        withCredentials: true
-      });
-      const updatedUser = { ...user, profilePicture: response.data.profilePicture };
-      setUser(updatedUser);
-      localStorage.setItem('user_data', JSON.stringify(updatedUser));
-      setPictureMessage('Profile picture updated.');
-    } catch (error) {
-      setPictureError(error.response?.data?.message || 'Unable to upload your profile picture. Please try again.');
-    } finally {
-      setIsUploadingPicture(false);
-      if (pictureInputRef.current) pictureInputRef.current.value = '';
-    }
-  };
-
   const signOut = () => {
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('user_data');
@@ -127,7 +87,7 @@ export default function CustomerDashboard() {
     <div className="workspace-shell customer-workspace">
       <aside className="workspace-sidebar">
         <Link className="workspace-brand" to="/customer/dashboard">
-          <span className="workspace-brand-mark">K</span>
+          <span className="workspace-brand-mark"><img src="/brand-logo.png" alt="" /></span>
           <span className="workspace-brand-copy"><strong>K-MERCE</strong><small>YOUR ACCOUNT</small></span>
         </Link>
         <div className="workspace-nav-label">YOUR ACCOUNT</div>
@@ -148,9 +108,18 @@ export default function CustomerDashboard() {
           <div className="workspace-breadcrumb">My account <span>/</span> Overview</div>
           <div className="workspace-user-menu">
             <span className="workspace-user-avatar customer-avatar">
+              {(displayName[0] || 'C').toUpperCase()}
               {profilePictureUrl
-                ? <img src={profilePictureUrl} alt="" />
-                : (displayName[0] || 'C').toUpperCase()}
+                ? (
+                  <img
+                    src={profilePictureUrl}
+                    alt=""
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none';
+                    }}
+                  />
+                )
+                : null}
             </span>
             <span className="workspace-user-copy"><strong>{displayName}</strong><small>Customer account</small></span>
             <button className="workspace-signout" type="button" onClick={signOut}>Sign out</button>
@@ -258,32 +227,20 @@ export default function CustomerDashboard() {
             </div>
             <div className="customer-profile-picture">
               <span className="customer-profile-picture-preview">
+                {(displayName[0] || 'C').toUpperCase()}
                 {profilePictureUrl
-                  ? <img src={profilePictureUrl} alt={`${displayName}'s profile`} />
-                  : (displayName[0] || 'C').toUpperCase()}
+                  ? (
+                    <img
+                      src={profilePictureUrl}
+                      alt={`${displayName}'s profile`}
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  )
+                  : null}
               </span>
-              <div className="customer-profile-picture-controls">
-                <strong>Profile picture</strong>
-                <small>JPG, PNG, WebP, or GIF. Maximum size: 5 MB.</small>
-                <button
-                  type="button"
-                  className="customer-profile-picture-button"
-                  onClick={() => pictureInputRef.current?.click()}
-                  disabled={isUploadingPicture}
-                >
-                  {isUploadingPicture ? 'Uploading…' : profilePictureUrl ? 'Change picture' : 'Add picture'}
-                </button>
-                <input
-                  ref={pictureInputRef}
-                  className="customer-profile-picture-input"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  aria-label="Choose a profile picture"
-                  onChange={uploadProfilePicture}
-                />
-                {pictureError && <span className="customer-profile-picture-error" role="alert">{pictureError}</span>}
-                {pictureMessage && <span className="customer-profile-picture-success" role="status">{pictureMessage}</span>}
-              </div>
+              <strong>Google account profile photo</strong>
             </div>
             <div className="workspace-detail-grid">
               <div className="workspace-detail-item">

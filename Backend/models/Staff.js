@@ -26,6 +26,11 @@ const staffSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    profilePictureSource: {
+        type: String,
+        enum: ['', 'google', 'upload'],
+        default: ''
+    },
     // Defines access control for Admin, Vendor, or Customer dashboards
     role: {
         type: String,
