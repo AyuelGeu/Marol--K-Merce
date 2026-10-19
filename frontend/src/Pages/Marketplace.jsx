@@ -156,6 +156,13 @@ export default function Marketplace() {
       `${product.name} ${product.description} ${product.storeName}`.toLowerCase().includes(query);
     return matchesCategory && matchesSearch;
   });
+  const productsByStore = visibleProducts.reduce((groups, product) => {
+    const storeName = product.storeName || 'Independent store';
+    const storeProducts = groups.get(storeName) || [];
+    storeProducts.push(product);
+    groups.set(storeName, storeProducts);
+    return groups;
+  }, new Map());
   const cartTotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
 
@@ -280,35 +287,61 @@ export default function Marketplace() {
               {products.length === 0 && <Link to="/register">Become a vendor</Link>}
             </div>
           )}
-          <div className="marketplace-product-grid">
-            {visibleProducts.map((product) => (
-              <article className="marketplace-product-card" key={product.id}>
-                {product.imageUrl
-                  ? <img
-                    className="marketplace-product-image"
-                    src={new URL(product.imageUrl, BACKEND_URL).toString()}
-                    alt={product.name}
-                  />
-                  : <div className="marketplace-product-placeholder" aria-hidden="true">◇</div>}
-                <div className="marketplace-product-content">
-                  <span className="marketplace-product-category">{product.category}</span>
-                  <h2>{product.name}</h2>
-                  {product.description && <p>{product.description}</p>}
-                  <span className="marketplace-store-name">Sold by {product.storeName}</span>
-                  <div className="marketplace-product-buy">
-                    <strong>KSh {Number(product.price).toFixed(2)}</strong>
-                    <button
-                      type="button"
-                      disabled={isPaying || Boolean(pendingPaymentId)}
-                      onClick={() => addToCart(product)}
-                    >
-                      Add to cart
-                    </button>
-                  </div>
+          {Array.from(productsByStore)
+            .sort(([, firstStoreProducts], [, secondStoreProducts]) => (
+              secondStoreProducts.length - firstStoreProducts.length
+            ))
+            .map(([storeName, storeProducts]) => (
+            <section className="marketplace-store-section" key={storeName} aria-label={`Products from ${storeName}`}>
+              <div className="marketplace-store-heading">
+                <div>
+                  <span>STORE</span>
+                  <h2>{storeName}</h2>
                 </div>
-              </article>
-            ))}
-          </div>
+                <span>{storeProducts.length} {storeProducts.length === 1 ? 'product' : 'products'}</span>
+              </div>
+              <div className="marketplace-product-grid">
+                {storeProducts.map((product) => (
+                  <article className="marketplace-product-card" key={product.id}>
+                    {product.imageUrl
+                      ? <img
+                        className="marketplace-product-image"
+                        src={new URL(product.imageUrl, BACKEND_URL).toString()}
+                        alt={product.name}
+                      />
+                      : <div className="marketplace-product-placeholder" aria-hidden="true">◇</div>}
+                    {product.galleryUrls?.length > 0 && (
+                      <div className="marketplace-product-gallery" role="group" aria-label={`Additional photos of ${product.name}`}>
+                        {product.galleryUrls.map((imageUrl, index) => (
+                          <img
+                            key={imageUrl}
+                            src={new URL(imageUrl, BACKEND_URL).toString()}
+                            alt={`${product.name}, additional photo ${index + 1}`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    <div className="marketplace-product-content">
+                      <span className="marketplace-product-category">{product.category}</span>
+                      <h2>{product.name}</h2>
+                      {product.description && <p>{product.description}</p>}
+                      <span className="marketplace-store-name">Sold by {product.storeName}</span>
+                      <div className="marketplace-product-buy">
+                        <strong>KSh {Number(product.price).toFixed(2)}</strong>
+                        <button
+                          type="button"
+                          disabled={isPaying || Boolean(pendingPaymentId)}
+                          onClick={() => addToCart(product)}
+                        >
+                          Add to cart
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ))}
         </section>
 
         <aside className="marketplace-cart" aria-label="Shopping cart">

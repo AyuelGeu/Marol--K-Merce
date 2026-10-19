@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './AdminDashboard.css';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
@@ -283,15 +283,20 @@ export default function AdminDashboard() {
     customers: users.filter((user) => user.role === 'customer').length
   }), [users]);
 
+  const directoryUsers = useMemo(
+    () => users.filter((user) => user.role !== 'customer' && user.role !== 'vendor'),
+    [users]
+  );
+
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return users;
-    return users.filter((user) =>
+    if (!query) return directoryUsers;
+    return directoryUsers.filter((user) =>
       [user.name, user.userName, user.email, user.role]
         .filter(Boolean)
         .some((value) => value.toLowerCase().includes(query))
     );
-  }, [search, users]);
+  }, [directoryUsers, search]);
 
   const signOut = () => {
     localStorage.removeItem('jwt_token');
@@ -325,11 +330,11 @@ export default function AdminDashboard() {
             User directory
             <span className="admin-nav-count">{counts.total}</span>
           </a>
-          <a className="admin-nav-link" href="#vendors">
+          <Link className="admin-nav-link" to="/admin/vendors">
             <span className="admin-nav-icon">◇</span>
             Vendors
             <span className="admin-nav-count">{counts.vendors}</span>
-          </a>
+          </Link>
           <a className="admin-nav-link" href="/admin/payments">
             <span className="admin-nav-icon">🪙</span>
             Payments
@@ -339,11 +344,11 @@ export default function AdminDashboard() {
             Store approvals
             <span className="admin-nav-count">{pendingStoreNameReviews.length}</span>
           </a>
-          <a className="admin-nav-link" href="#customers">
+          <Link className="admin-nav-link" to="/admin/customers">
             <span className="admin-nav-icon">♡</span>
             Customers
             <span className="admin-nav-count">{counts.customers}</span>
-          </a>
+          </Link>
           <a className="admin-nav-link" href="#admins">
             <span className="admin-nav-icon">✦</span>
             Administrators
@@ -530,7 +535,7 @@ export default function AdminDashboard() {
               <div>
                 <div className="admin-eyebrow">PEOPLE</div>
                 <h2>User directory</h2>
-                <p>Review registered users and their platform roles.</p>
+                <p>Review administrator accounts. Vendor and customer accounts are listed separately.</p>
               </div>
               <label className="admin-search">
                 <span aria-hidden="true">⌕</span>
@@ -539,7 +544,7 @@ export default function AdminDashboard() {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search users"
-                  aria-label="Search users by name, email, or role"
+                  aria-label="Search administrator accounts by name, email, or role"
                 />
                 {search && (
                   <button type="button" onClick={() => setSearch('')} aria-label="Clear search">×</button>
@@ -612,7 +617,7 @@ export default function AdminDashboard() {
               </table>
             </div>
             <div className="admin-directory-footer">
-              <span>Showing <strong>{filteredUsers.length}</strong> of <strong>{users.length}</strong> users</span>
+              <span>Showing <strong>{filteredUsers.length}</strong> of <strong>{directoryUsers.length}</strong> accounts</span>
               <span className="admin-data-note"><span /> Live account data</span>
             </div>
           </section>

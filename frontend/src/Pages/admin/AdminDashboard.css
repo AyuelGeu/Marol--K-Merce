@@ -885,6 +885,30 @@
   flex-basis: 8px;
 }
 
+.admin-vendor-approval {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 20px;
+  background: rgba(219, 164, 72, .15);
+  color: #f1c778;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.admin-vendor-approval > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.admin-vendor-approval.is-approved {
+  background: rgba(30, 163, 98, .15);
+  color: #65d59c;
+}
+
 .admin-table-message {
   height: 100px !important;
   color: var(--admin-muted) !important;

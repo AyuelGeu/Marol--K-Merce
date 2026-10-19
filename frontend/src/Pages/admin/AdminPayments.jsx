@@ -104,10 +104,10 @@ export default function AdminPayments() {
         <nav className="admin-nav" aria-label="Admin navigation">
           <Link className="admin-nav-link" to="/admin/dashboard#overview"><span className="admin-nav-icon">▦</span>Overview</Link>
           <Link className="admin-nav-link" to="/admin/dashboard#users"><span className="admin-nav-icon">♙</span>User directory</Link>
-          <Link className="admin-nav-link" to="/admin/dashboard#vendors"><span className="admin-nav-icon">◇</span>Vendors</Link>
+          <Link className="admin-nav-link" to="/admin/vendors"><span className="admin-nav-icon">◇</span>Vendors</Link>
           <Link className="admin-nav-link is-active" to="/admin/payments"><span className="admin-nav-icon">🪙</span>Payments</Link>
           <Link className="admin-nav-link" to="/admin/dashboard#store-approvals"><span className="admin-nav-icon">!</span>Store approvals</Link>
-          <Link className="admin-nav-link" to="/admin/dashboard#customers"><span className="admin-nav-icon">♡</span>Customers</Link>
+          <Link className="admin-nav-link" to="/admin/customers"><span className="admin-nav-icon">♡</span>Customers</Link>
           <Link className="admin-nav-link" to="/admin/dashboard#admins"><span className="admin-nav-icon">✦</span>Administrators</Link>
         </nav>
         <div className="admin-sidebar-bottom">

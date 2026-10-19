@@ -18,36 +18,60 @@
 .customer-workspace {
   position: relative;
   isolation: isolate;
-  background: linear-gradient(135deg, #f7f8fc 0%, #f3f6fa 55%, #f7f5fb 100%);
+  background: #706363;
 }
 
 .customer-workspace::before,
 .customer-workspace::after {
-  position: fixed;
-  z-index: 0;
-  inset: -18%;
-  pointer-events: none;
-  content: "";
-  filter: blur(42px);
-}
-
-.customer-workspace::before {
-  background:
-    radial-gradient(ellipse 34% 25% at 18% 28%, rgba(185, 204, 233, .34), transparent 72%),
-    radial-gradient(ellipse 27% 22% at 72% 42%, rgba(197, 207, 235, .3), transparent 70%),
-    radial-gradient(ellipse 36% 26% at 45% 78%, rgba(191, 218, 222, .27), transparent 72%);
-  animation: customer-cloud-drift 38s ease-in-out infinite alternate;
-}
-
-.customer-workspace::after {
-  background:
-    radial-gradient(ellipse 28% 20% at 38% 18%, rgba(222, 211, 242, .26), transparent 72%),
-    radial-gradient(ellipse 35% 24% at 84% 76%, rgba(190, 211, 233, .3), transparent 72%);
-  animation: customer-cloud-drift 52s ease-in-out -14s infinite alternate-reverse;
+  display: none;
 }
 
 .customer-workspace .workspace-sidebar {
   z-index: 2;
+  border-right-color: rgba(255, 255, 255, .18);
+  background: #706363;
+}
+
+.customer-workspace .workspace-brand-copy strong,
+.customer-workspace .workspace-nav-link {
+  color: #f5eeee;
+}
+
+.customer-workspace .workspace-brand-copy small,
+.customer-workspace .workspace-nav-label,
+.customer-workspace .workspace-sidebar-foot {
+  color: #d2c6c4;
+}
+
+.customer-workspace .workspace-nav-link:hover,
+.customer-workspace .workspace-nav-link.is-active {
+  background: rgba(255, 255, 255, .14);
+  color: #fff;
+}
+
+.customer-workspace .workspace-secure-card {
+  border-color: rgba(255, 255, 255, .2);
+  background: rgba(255, 255, 255, .09);
+  color: #f5eeee;
+}
+
+.customer-workspace .workspace-secure-card small {
+  color: #d2c6c4;
+}
+
+.customer-workspace .workspace-topbar {
+  border-bottom-color: rgba(255, 255, 255, .18);
+  background: #706363;
+}
+
+.customer-workspace .workspace-breadcrumb,
+.customer-workspace .workspace-user-copy strong {
+  color: #f5eeee;
+}
+
+.customer-workspace .workspace-breadcrumb > span,
+.customer-workspace .workspace-user-copy small {
+  color: #d2c6c4;
 }
 
 .customer-workspace .workspace-main {
@@ -55,16 +79,16 @@
   z-index: 1;
 }
 
-@keyframes customer-cloud-drift {
-  from { transform: translate3d(-2%, -1%, 0) scale(1); }
-  to { transform: translate3d(2%, 1.5%, 0) scale(1.08); }
+.customer-workspace .workspace-welcome h1 {
+  color: #fff;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .customer-workspace::before,
-  .customer-workspace::after {
-    animation: none;
-  }
+.customer-workspace .workspace-welcome p {
+  color: #eee5e3;
+}
+
+.customer-workspace .workspace-welcome .workspace-eyebrow {
+  color: #d8eee6;
 }
 
 #root:has(.workspace-shell) {
@@ -1253,6 +1277,259 @@
   font-weight: 700;
 }
 
+.vendor-orders-panel .workspace-panel-heading {
+  align-items: center;
+  padding: 26px 28px 22px;
+  border-bottom: 1px solid #e9f0ed;
+  background: linear-gradient(120deg, #f2f8f6 0%, #fff 72%);
+}
+
+.vendor-orders-panel .workspace-panel-heading .workspace-eyebrow {
+  display: inline-block;
+  margin-bottom: 9px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  background: #e5f2ee;
+  letter-spacing: .12em;
+}
+
+.vendor-orders-panel .workspace-panel-heading h2 {
+  font-size: 21px;
+}
+
+.vendor-orders-panel .workspace-panel-heading p {
+  font-size: 12px;
+}
+
+.vendor-orders-panel .workspace-status-pill {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #d7eae3;
+  border-radius: 20px;
+  background: #edf7f3;
+  color: #287967;
+  white-space: nowrap;
+}
+
+.vendor-orders-panel .workspace-status-pill > span {
+  background: #43a58e;
+}
+
+.vendor-orders-panel > .vendor-data-state,
+.vendor-orders-panel > .vendor-data-error {
+  margin: 0;
+  padding: 26px 28px;
+  border: 0;
+  background: #fbfcfc;
+  font-size: 12px;
+  text-align: center;
+}
+
+.vendor-orders-panel > .vendor-data-error {
+  background: #fff8f7;
+}
+
+.vendor-order-list {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 14px;
+  padding: 0 28px 28px;
+}
+
+.vendor-order-card {
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid #e4ece9;
+  border-left: 3px solid #75b7a4;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #fff 0%, #fcfefd 100%);
+  box-shadow: 0 3px 12px rgba(32, 65, 55, .04);
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.vendor-order-card::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, #75b7a4, #c5e5d9 70%, transparent);
+  content: "";
+}
+
+.vendor-order-card:hover {
+  transform: translateY(-2px);
+  border-color: #cfe3dc;
+  box-shadow: 0 8px 20px rgba(32, 65, 55, .08);
+}
+
+.vendor-order-card:focus-within {
+  outline: 2px solid #75b7a4;
+  outline-offset: 2px;
+}
+
+.vendor-order-heading {
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #edf2f0;
+}
+
+.vendor-order-heading strong {
+  font-size: 14px;
+  letter-spacing: -.015em;
+}
+
+.vendor-order-heading > div > span {
+  font-size: 11px;
+}
+
+.vendor-order-status {
+  padding: 5px 10px;
+  border: 1px solid #d9ece4;
+  background: #edf7f1;
+  color: #287967;
+  font-size: 10px;
+}
+
+.vendor-order-status.is-cancelled {
+  border-color: #f2d3d0;
+}
+
+.vendor-order-customer {
+  margin: 15px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #edf2f0;
+  border-radius: 8px;
+  background: #f6f9f8;
+  color: #596779;
+  font-size: 12px;
+}
+
+.vendor-order-items {
+  gap: 9px;
+  padding: 13px 0;
+}
+
+.vendor-order-items > div {
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: #f7faf9;
+  font-size: 12px;
+  transition: background .15s ease;
+}
+
+.vendor-order-items > div:hover {
+  background: #eef6f3;
+}
+
+.vendor-order-total {
+  align-items: baseline;
+  font-size: 12px;
+}
+
+.vendor-order-items > div > span {
+  overflow-wrap: anywhere;
+}
+
+.vendor-order-items strong {
+  font-size: 12px;
+}
+
+.vendor-order-total {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #e9efed;
+  color: #465365;
+}
+
+.vendor-order-total > span {
+  letter-spacing: .01em;
+}
+
+.vendor-order-total strong {
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: #edf7f3;
+  color: #287967;
+  font-size: 15px;
+}
+
+.vendor-order-notifications .workspace-panel-heading {
+  align-items: center;
+}
+
+.vendor-priority-link {
+  flex: 0 0 auto;
+  color: #318a76;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.vendor-priority-link:hover {
+  color: #246e5d;
+  text-decoration: underline;
+}
+
+.vendor-priority-list {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0 22px 20px;
+  list-style: none;
+}
+
+.vendor-priority-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e6eeeb;
+  border-radius: 9px;
+  background: #fcfefd;
+}
+
+.vendor-priority-rank {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #eaf6f2;
+  color: #287967;
+  font-size: 9px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.vendor-priority-item:first-child .vendor-priority-rank {
+  background: #dff0e9;
+  color: #216b58;
+}
+
+.vendor-priority-details {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.vendor-priority-details strong {
+  overflow-wrap: anywhere;
+  color: #343b4b;
+  font-size: 11px;
+}
+
+.vendor-priority-details span {
+  overflow: hidden;
+  color: #9299a8;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vendor-priority-value {
+  color: #287967;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .customer-orders-error {
   margin: 0 22px 12px;
   color: #b42318;
@@ -1293,6 +1570,40 @@
 }
 
 @media (max-width: 600px) {
+  .vendor-order-notifications .workspace-panel-heading {
+    align-items: flex-start;
+  }
+
+  .vendor-priority-list {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .vendor-priority-item {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .vendor-priority-value {
+    grid-column: 2;
+  }
+
+  .vendor-orders-panel .workspace-panel-heading {
+    padding: 20px 16px 16px;
+  }
+
+  .vendor-order-list {
+    padding: 0 16px 20px;
+  }
+
+  .vendor-order-card {
+    padding: 15px;
+  }
+
+  .vendor-orders-panel > .vendor-data-state,
+  .vendor-orders-panel > .vendor-data-error {
+    padding: 20px 16px;
+  }
+
   .vendor-listing-notice,
   .vendor-product-form,
   .vendor-data-state,

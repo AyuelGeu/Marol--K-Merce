@@ -16,14 +16,17 @@ const upload = multer({
             callback(null, `${crypto.randomUUID()}${allowedImageTypes.get(file.mimetype)}`);
         }
     }),
-    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    limits: { fileSize: 5 * 1024 * 1024, files: 6 },
     fileFilter: (req, file, callback) => {
         if (!allowedImageTypes.has(file.mimetype)) {
             return callback(new Error('Upload a JPG, PNG, WebP, or GIF product image'));
         }
         return callback(null, true);
     }
-}).single('image');
+}).fields([
+    { name: 'thumbnail', maxCount: 1 },
+    { name: 'gallery', maxCount: 5 }
+]);
 
 module.exports = (req, res, next) => {
     upload(req, res, (error) => {
@@ -39,9 +42,11 @@ module.exports = (req, res, next) => {
         if (error) {
             return next(error);
         }
-        if (req.file) {
-            req.productImageUrl = `/uploads/${req.file.filename}`;
-        }
+        req.productThumbnailUrl = req.files?.thumbnail?.[0]
+            ? `/uploads/${req.files.thumbnail[0].filename}`
+            : '';
+        req.productGalleryUrls = (req.files?.gallery || [])
+            .map((file) => `/uploads/${file.filename}`);
         return next();
     });
 };

@@ -11,6 +11,8 @@ import OAuthCallback from './Auth/OAuthCallback';
 //Role-Specific Dashboards
 import AdminDashboard from './Pages/admin/AdminDashboard.jsx';
 import AdminPayments from './Pages/admin/AdminPayments.jsx';
+import AdminCustomers from './Pages/admin/AdminCustomers.jsx';
+import AdminVendors from './Pages/admin/AdminVendors.jsx';
 import VendorDashboard from './Pages/vendor/VendorDashboard.jsx';
 import CustomerDashboard from './Pages/customer/CustomerDashboard.jsx';
 import Marketplace from './Pages/Marketplace.jsx';
@@ -74,11 +76,14 @@ function App() {
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/payments" element={<AdminPayments />} />
+          <Route path="/admin/customers" element={<AdminCustomers />} />
+          <Route path="/admin/vendors" element={<AdminVendors />} />
         </Route>
 
         {/*Vendor Portal */}
         <Route element={<ProtectedRoute allowedRoles={['vendor']} />}>
           <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+          <Route path="/vendor/orders" element={<VendorDashboard />} />
         </Route>
         
         {/*Customer Portal */}

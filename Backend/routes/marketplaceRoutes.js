@@ -23,6 +23,22 @@ const removeUploadedImage = async (file) => {
     }
 };
 
+const removeUploadedImages = async (files = {}) => {
+    const uploadedFiles = Object.values(files).flat();
+    await Promise.all(uploadedFiles.map(removeUploadedImage));
+};
+
+const removeStoredImage = async (imageUrl) => {
+    if (typeof imageUrl !== 'string' || !imageUrl.startsWith('/uploads/')) return;
+    try {
+        await fs.unlink(path.join(uploadsDirectory, path.basename(imageUrl)));
+    } catch (error) {
+        if (error.code !== 'ENOENT') {
+            console.error('Unable to remove a replaced product image:', error);
+        }
+    }
+};
+
 const getValidatedProductFields = (body) => {
     const { name, description = '', category, price } = body;
     const trimmedName = typeof name === 'string' ? name.trim() : '';
@@ -69,6 +85,7 @@ router.get('/products', async (req, res) => {
                 category: product.category,
                 price: product.price,
                 imageUrl: product.imageUrl,
+                galleryUrls: product.galleryUrls || [],
                 vendorId: product.vendor._id,
                 storeName: product.vendor.vendorProfile.storeName
             })));
@@ -91,14 +108,19 @@ router.get('/vendor/products', protect, authorize('vendor'), async (req, res) =>
 router.post('/products', protect, authorize('vendor'), uploadProductImage, async (req, res) => {
     const productFields = getValidatedProductFields(req.body);
     if (!productFields) {
-        await removeUploadedImage(req.file);
+        await removeUploadedImages(req.files);
         return res.status(400).json({ message: 'Enter a product name, category, and positive whole-number price.' });
+    }
+
+    if (!req.productThumbnailUrl) {
+        await removeUploadedImages(req.files);
+        return res.status(400).json({ message: 'A product thumbnail is required.' });
     }
 
     if (!req.user.vendorProfile?.isApproved ||
         req.user.vendorProfile.storeNameStatus !== 'approved' ||
         !req.user.vendorProfile.storeName?.trim()) {
-        await removeUploadedImage(req.file);
+        await removeUploadedImages(req.files);
         return res.status(403).json({ message: 'Your vendor account and store name must be approved before listing products.' });
     }
 
@@ -106,11 +128,12 @@ router.post('/products', protect, authorize('vendor'), uploadProductImage, async
         const product = await Product.create({
             vendor: req.user._id,
             ...productFields,
-            imageUrl: req.productImageUrl || ''
+            imageUrl: req.productThumbnailUrl,
+            galleryUrls: req.productGalleryUrls || []
         });
         return res.status(201).json(product);
     } catch (error) {
-        await removeUploadedImage(req.file);
+        await removeUploadedImages(req.files);
         console.error('Vendor product creation error:', error);
         return res.status(500).json({ message: 'Unable to publish this product' });
     }
@@ -125,14 +148,27 @@ router.put('/products/:productId', protect, authorize('vendor'), (req, res, next
 
     const productFields = getValidatedProductFields(req.body);
     if (!productFields) {
-        await removeUploadedImage(req.file);
+        await removeUploadedImages(req.files);
         return res.status(400).json({ message: 'Enter a product name, category, and positive whole-number price.' });
     }
 
     try {
+        const existingProduct = await Product.findOne({
+            _id: req.params.productId,
+            vendor: req.user._id
+        }).select('imageUrl galleryUrls');
+        if (!existingProduct) {
+            await removeUploadedImages(req.files);
+            return res.status(404).json({ message: 'Product not found in your catalog.' });
+        }
+
         const updateFields = { ...productFields };
-        if (req.productImageUrl) {
-            updateFields.imageUrl = req.productImageUrl;
+        if (req.productThumbnailUrl) {
+            updateFields.imageUrl = req.productThumbnailUrl;
+        }
+        const isReplacingGallery = Boolean(req.files?.gallery?.length);
+        if (isReplacingGallery) {
+            updateFields.galleryUrls = req.productGalleryUrls;
         }
 
         const product = await Product.findOneAndUpdate(
@@ -141,13 +177,20 @@ router.put('/products/:productId', protect, authorize('vendor'), (req, res, next
             { returnDocument: 'after', runValidators: true }
         );
         if (!product) {
-            await removeUploadedImage(req.file);
+            await removeUploadedImages(req.files);
             return res.status(404).json({ message: 'Product not found in your catalog.' });
+        }
+
+        if (req.productThumbnailUrl) {
+            await removeStoredImage(existingProduct.imageUrl);
+        }
+        if (isReplacingGallery) {
+            await Promise.all((existingProduct.galleryUrls || []).map(removeStoredImage));
         }
 
         return res.status(200).json(product);
     } catch (error) {
-        await removeUploadedImage(req.file);
+        await removeUploadedImages(req.files);
         console.error('Vendor product update error:', error);
         return res.status(500).json({ message: 'Unable to update this product' });
     }

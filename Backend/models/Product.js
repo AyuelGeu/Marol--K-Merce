@@ -37,6 +37,14 @@ const productSchema = new mongoose.Schema({
         maxlength: 2048,
         default: ''
     },
+    galleryUrls: {
+        type: [{
+            type: String,
+            trim: true,
+            maxlength: 2048
+        }],
+        default: []
+    },
     isActive: {
         type: Boolean,
         default: true,

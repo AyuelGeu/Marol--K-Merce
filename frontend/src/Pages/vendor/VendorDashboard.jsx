@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './RoleDashboard.css';
 
@@ -39,7 +39,8 @@ export default function VendorDashboard() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [isPublishingProduct, setIsPublishingProduct] = useState(false);
   const [editingProductId, setEditingProductId] = useState('');
-  const [productImage, setProductImage] = useState(null);
+  const [productThumbnail, setProductThumbnail] = useState(null);
+  const [productGallery, setProductGallery] = useState([]);
   const [productImageInputKey, setProductImageInputKey] = useState(0);
   const [productError, setProductError] = useState('');
   const [productMessage, setProductMessage] = useState('');
@@ -49,6 +50,8 @@ export default function VendorDashboard() {
     category: '',
     price: ''
   });
+  const location = useLocation();
+  const isOrdersPage = location.pathname === '/vendor/orders';
   const navigate = useNavigate();
   const vendorProfile = user.vendorProfile || {};
   const displayName = user.name && user.name !== 'New User' ? user.name : 'Vendor';
@@ -63,6 +66,9 @@ export default function VendorDashboard() {
     storeNameStatus === 'approved' &&
     vendorProfile.storeName?.trim()
   );
+  const priorityOrders = [...orders]
+    .sort((firstOrder, secondOrder) => Number(secondOrder.total) - Number(firstOrder.total))
+    .slice(0, 3);
 
   useEffect(() => {
     let isCurrent = true;
@@ -117,6 +123,18 @@ export default function VendorDashboard() {
     setProductForm((form) => ({ ...form, [name]: value }));
   };
 
+  const updateProductGallery = (event) => {
+    const selectedImages = Array.from(event.target.files || []);
+    if (selectedImages.length > 5) {
+      setProductError('Choose no more than 5 gallery images.');
+      setProductGallery([]);
+      setProductImageInputKey((key) => key + 1);
+      return;
+    }
+    setProductGallery(selectedImages);
+    setProductError('');
+  };
+
   const publishProduct = async (event) => {
     event.preventDefault();
     setIsPublishingProduct(true);
@@ -128,9 +146,10 @@ export default function VendorDashboard() {
       productData.append('description', productForm.description);
       productData.append('category', productForm.category);
       productData.append('price', String(Number(productForm.price)));
-      if (productImage) {
-        productData.append('image', productImage);
+      if (productThumbnail) {
+        productData.append('thumbnail', productThumbnail);
       }
+      productGallery.forEach((image) => productData.append('gallery', image));
 
       const request = editingProductId
         ? axios.put(`${BACKEND_URL}/api/marketplace/products/${editingProductId}`, productData, {
@@ -159,7 +178,8 @@ export default function VendorDashboard() {
       }
       setEditingProductId('');
       setProductForm({ name: '', description: '', category: '', price: '' });
-      setProductImage(null);
+      setProductThumbnail(null);
+      setProductGallery([]);
       setProductImageInputKey((key) => key + 1);
     } catch (error) {
       setProductError(error.response?.data?.message || 'Unable to save your product. Please try again.');
@@ -176,7 +196,8 @@ export default function VendorDashboard() {
       category: product.category,
       price: String(product.price)
     });
-    setProductImage(null);
+    setProductThumbnail(null);
+    setProductGallery([]);
     setProductImageInputKey((key) => key + 1);
     setProductError('');
     setProductMessage('');
@@ -186,7 +207,8 @@ export default function VendorDashboard() {
   const cancelProductEdit = () => {
     setEditingProductId('');
     setProductForm({ name: '', description: '', category: '', price: '' });
-    setProductImage(null);
+    setProductThumbnail(null);
+    setProductGallery([]);
     setProductImageInputKey((key) => key + 1);
     setProductError('');
     setProductMessage('');
@@ -248,11 +270,11 @@ export default function VendorDashboard() {
         </Link>
         <div className="workspace-nav-label">YOUR WORKSPACE</div>
         <nav className="workspace-nav" aria-label="Vendor navigation">
-          <a className="workspace-nav-link is-active" href="#overview"><span>▦</span>Overview</a>
-          <a className="workspace-nav-link" href="#store"><span>◇</span>Store profile</a>
-          <a className="workspace-nav-link" href="#products"><span>▧</span>Products</a>
-          <a className="workspace-nav-link" href="#orders"><span>▤</span>Orders</a>
-          <a className="workspace-nav-link" href="#account"><span>♙</span>Account</a>
+          <a className={`workspace-nav-link${isOrdersPage ? '' : ' is-active'}`} href={isOrdersPage ? '/vendor/dashboard#overview' : '#overview'}><span>▦</span>Overview</a>
+          <a className="workspace-nav-link" href={isOrdersPage ? '/vendor/dashboard#store' : '#store'}><span>◇</span>Store profile</a>
+          <a className="workspace-nav-link" href={isOrdersPage ? '/vendor/dashboard#products' : '#products'}><span>▧</span>Products</a>
+          <Link className={`workspace-nav-link${isOrdersPage ? ' is-active' : ''}`} to="/vendor/orders"><span>▤</span>Orders</Link>
+          <a className="workspace-nav-link" href={isOrdersPage ? '/vendor/dashboard#account' : '#account'}><span>♙</span>Account</a>
         </nav>
         <div className="workspace-sidebar-bottom">
           <div className="workspace-secure-card"><span className="workspace-live-dot" /><div><strong>Seller account</strong><small>Role-protected workspace</small></div></div>
@@ -262,7 +284,7 @@ export default function VendorDashboard() {
 
       <main className="workspace-main">
         <header className="workspace-topbar">
-          <div className="workspace-breadcrumb">Seller workspace <span>/</span> Overview</div>
+          <div className="workspace-breadcrumb">Seller workspace <span>/</span> {isOrdersPage ? 'Orders' : 'Overview'}</div>
           <div className="workspace-user-menu">
             <span className="workspace-user-avatar vendor-avatar">
               {profilePictureUrl
@@ -275,6 +297,7 @@ export default function VendorDashboard() {
         </header>
 
         <div className="workspace-content">
+          {!isOrdersPage && <>
           <section className="workspace-welcome" id="overview">
             <div>
               <div className="workspace-eyebrow">SELLER WORKSPACE</div>
@@ -307,6 +330,39 @@ export default function VendorDashboard() {
               <strong className="workspace-info-value">{vendorProfile.storeName || 'Not configured'}</strong>
               <span className="workspace-info-detail">Seller profile on your account</span>
             </article>
+          </section>
+
+          <section className="workspace-panel vendor-order-notifications" aria-label="Order priority notifications">
+            <div className="workspace-panel-heading">
+              <div>
+                <div className="workspace-eyebrow">ORDER ACTIVITY</div>
+                <h2>Order priority notifications</h2>
+                <p>Orders with the highest value are listed first.</p>
+              </div>
+              <Link className="vendor-priority-link" to="/vendor/orders">View all orders</Link>
+            </div>
+            {ordersError ? (
+              <p className="vendor-data-error" role="alert">{ordersError}</p>
+            ) : isLoadingOrders ? (
+              <p className="vendor-data-state">Loading order notifications…</p>
+            ) : priorityOrders.length === 0 ? (
+              <p className="vendor-data-state">No customer orders yet. New orders will appear here.</p>
+            ) : (
+              <ol className="vendor-priority-list">
+                {priorityOrders.map((order, index) => (
+                  <li className="vendor-priority-item" key={order.id}>
+                    <span className="vendor-priority-rank">Priority {index + 1}</span>
+                    <div className="vendor-priority-details">
+                      <strong>Order {order.id}</strong>
+                      <span>
+                        {order.customer.name} · {new Date(order.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                    <strong className="vendor-priority-value">KSh {Number(order.total).toFixed(2)}</strong>
+                  </li>
+                ))}
+              </ol>
+            )}
           </section>
 
           <section className="workspace-panel" id="store">
@@ -415,17 +471,36 @@ export default function VendorDashboard() {
                   <input name="price" type="number" min="1" step="1" value={productForm.price} onChange={updateProductForm} required />
                 </label>
                 <label className="vendor-product-image-field">
-                  Product image (JPG, PNG, WebP, or GIF; max 5 MB)
+                  Product thumbnail (JPG, PNG, WebP, or GIF; max 5 MB)
                   <input
-                    key={productImageInputKey}
-                    name="image"
+                    key={`${productImageInputKey}-thumbnail`}
+                    name="thumbnail"
                     type="file"
                     accept="image/jpeg,image/png,image/webp,image/gif"
-                    onChange={(event) => setProductImage(event.target.files?.[0] || null)}
+                    onChange={(event) => setProductThumbnail(event.target.files?.[0] || null)}
+                    required={!editingProductId}
                   />
-                  {productImage && <span>Selected: {productImage.name}</span>}
-                  {!productImage && editingProductId && products.find((product) => product._id === editingProductId)?.imageUrl && (
-                    <span>Current image will be kept unless you choose another.</span>
+                  {productThumbnail && <span>Selected thumbnail: {productThumbnail.name}</span>}
+                  {!productThumbnail && editingProductId && products.find((product) => product._id === editingProductId)?.imageUrl && (
+                    <span>Current thumbnail will be kept unless you choose another.</span>
+                  )}
+                </label>
+                <label className="vendor-product-image-field">
+                  Gallery images (up to 5; each max 5 MB)
+                  <input
+                    key={`${productImageInputKey}-gallery`}
+                    name="gallery"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    multiple
+                    onChange={updateProductGallery}
+                  />
+                  {productGallery.length > 0 ? (
+                    <span>Selected: {productGallery.map((image) => image.name).join(', ')}</span>
+                  ) : editingProductId && products.find((product) => product._id === editingProductId)?.galleryUrls?.length > 0 ? (
+                    <span>Current gallery ({products.find((product) => product._id === editingProductId).galleryUrls.length} images) will be kept unless you choose replacements.</span>
+                  ) : (
+                    <span>Optional additional product photos.</span>
                   )}
                 </label>
                 <label className="vendor-product-description">
@@ -466,7 +541,10 @@ export default function VendorDashboard() {
                     )}
                     <div>
                       <strong>{product.name}</strong>
-                      <span>{product.category}</span>
+                      <span>
+                        {product.category}
+                        {product.galleryUrls?.length > 0 && ` · ${product.galleryUrls.length} gallery photos`}
+                      </span>
                     </div>
                     <div className="vendor-product-row-actions">
                       <strong>KSh {Number(product.price).toFixed(2)}</strong>
@@ -483,8 +561,9 @@ export default function VendorDashboard() {
               </div>
             )}
           </section>
+          </>}
 
-          <section className="workspace-panel vendor-orders-panel" id="orders">
+          {isOrdersPage && <section className="workspace-panel vendor-orders-panel" id="orders">
             <div className="workspace-panel-heading">
               <div>
                 <div className="workspace-eyebrow">CUSTOMER PURCHASES</div>
@@ -518,7 +597,7 @@ export default function VendorDashboard() {
                       {order.items.map((item, index) => (
                         <div key={`${item.productName}-${index}`}>
                           <span>{item.productName} × {item.quantity}</span>
-                          <strong>${(item.unitPrice * item.quantity).toFixed(2)}</strong>
+                          <strong>KSh {(item.unitPrice * item.quantity).toFixed(2)}</strong>
                         </div>
                       ))}
                     </div>
@@ -527,8 +606,9 @@ export default function VendorDashboard() {
                 ))}
               </div>
             )}
-          </section>
+          </section>}
 
+          {!isOrdersPage && <>
           <section className="workspace-panel workspace-account-panel" id="account">
             <div className="workspace-panel-heading">
               <div>
@@ -550,6 +630,7 @@ export default function VendorDashboard() {
           </section>
 
           <footer className="workspace-footer"><span>K-Merce Seller Workspace</span><span>Signed in since {joinedDate}</span></footer>
+          </>}
         </div>
       </main>
     </div>
