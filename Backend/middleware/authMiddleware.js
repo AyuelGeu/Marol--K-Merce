@@ -1,6 +1,6 @@
 // middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
-const Staff = require('../models/Staff');
+const Staff = require('../models/Users');
 
 // Layer 1 & 2: Authentication Identity
 exports.protect = async (req, res, next) => {

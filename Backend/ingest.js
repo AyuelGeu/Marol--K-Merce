@@ -1,12 +1,10 @@
-const { MongoClient } = require('mongodb');
+const mongoose = require('mongoose');
 require('dotenv').config();
 
 async function ingestData(textChunks) {
-    const client = new MongoClient(process.env.MONGO_URI);
     try {
-        await client.connect();
-        const db = client.db('K-Merce'); // Targeting your existing database
-        const collection = db.collection('documents');
+        await mongoose.connect(process.env.MONGO_URI);
+        const collection = mongoose.connection.db.collection('documents');
 
         // Dynamically import the ES Module
         const { pipeline } = await import('@xenova/transformers');
@@ -22,10 +20,8 @@ async function ingestData(textChunks) {
             });
         }
         console.log("Data vectorized and saved successfully!");
-    } catch (error) {
-        console.error(error);
     } finally {
-        await client.close();
+        await mongoose.disconnect();
     }
 }
 
@@ -33,4 +29,7 @@ async function ingestData(textChunks) {
 ingestData([
     "To integrate M-Pesa STK push, you need a Paybill number and an authentication token.",
     "The transaction fee for sending 1000 KES is 12 KES."
-]);
+]).catch(error => {
+    console.error('Failed to ingest AI reference data:', error);
+    process.exitCode = 1;
+});

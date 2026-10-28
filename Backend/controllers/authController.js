@@ -1,5 +1,5 @@
 // controllers/authController.js
-const Staff = require('../models/Staff');
+const Staff = require('../models/Users');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');

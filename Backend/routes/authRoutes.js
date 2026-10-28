@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const Staff = require('../models/Staff');
+const Staff = require('../models/Users');
 const {
     registerStaff,
     loginStaff,

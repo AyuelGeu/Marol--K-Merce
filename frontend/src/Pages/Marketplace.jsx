@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import './Marketplace.css';
+import MarketplaceChatbot from './MarketplaceChatbot';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const CART_STORAGE_KEY = 'marketplace_cart';
@@ -416,6 +417,7 @@ export default function Marketplace() {
           )}
         </aside>
       </div>
+      <MarketplaceChatbot />
     </main>
   );
 }
