@@ -85,7 +85,7 @@ export default function MarketplaceChatbot() {
             <div className="marketplace-chatbot-brand">
               <span className="marketplace-chatbot-avatar" aria-hidden="true">K</span>
               <div>
-                <strong>K-Merce assistant</strong>
+                <strong>K-AI Assistant</strong>
                 <span>Ask about using the marketplace</span>
               </div>
             </div>
@@ -140,7 +140,7 @@ export default function MarketplaceChatbot() {
 
           <form className="marketplace-chatbot-form" onSubmit={handleSubmit}>
             <label className="marketplace-chatbot-visually-hidden" htmlFor="marketplace-chatbot-input">
-              Ask the K-Merce assistant
+              Ask the K-AI Assistant
             </label>
             <textarea
               id="marketplace-chatbot-input"
