@@ -27,8 +27,9 @@ async function ingestData(textChunks) {
 
 // Add your custom M-Pesa or business knowledge here
 ingestData([
-    "To integrate M-Pesa STK push, you need a Paybill number and an authentication token.",
-    "The transaction fee for sending 1000 KES is 12 KES."
+    "In order to order, you need to have an M-Pesa account and sufficient balance.",
+    "M-Pesa is a mobile money transfer service that allows users to send and receive money using their mobile phones.",
+    "To make a payment using M-Pesa, you need to enter the recipient's phone number and the amount you wish to send.",
 ]).catch(error => {
     console.error('Failed to ingest AI reference data:', error);
     process.exitCode = 1;
