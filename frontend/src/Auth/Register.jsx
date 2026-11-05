@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
@@ -13,6 +13,7 @@ export default function Register({ isModal = false, onClose }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (!isModal) return undefined;
@@ -58,7 +59,12 @@ export default function Register({ isModal = false, onClose }) {
         withCredentials: true 
       });
 
-      navigate('/otp-verification', { state: { email: email } }); 
+      navigate('/otp-verification', {
+        state: {
+          email,
+          returnTo: location.state?.returnTo === '/marketplace' ? '/marketplace' : undefined
+        }
+      });
     } catch (error) {
       console.error("Failed to connect to server:", error);
       if (error.response) {
@@ -221,7 +227,11 @@ export default function Register({ isModal = false, onClose }) {
 
         <p style={{ marginTop: '24px', marginBottom: '0', fontSize: '14px', color: '#D6D3D1' }}>
           Already registered?{' '}
-          <Link to="/login" style={{ color: '#FCD34D', fontWeight: '600', textDecoration: 'none' }}>
+          <Link
+            to="/login"
+            state={location.state?.returnTo === '/marketplace' ? { returnTo: '/marketplace' } : undefined}
+            style={{ color: '#FCD34D', fontWeight: '600', textDecoration: 'none' }}
+          >
             Sign in
           </Link>
         </p>

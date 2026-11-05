@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axios from 'axios';
 import { getDashboardPath } from '../utils/roleRoutes';
 
@@ -11,6 +11,8 @@ export default function Login({ isModal = false, onClose }) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnToMarketplace = location.state?.returnTo === '/marketplace';
 
   useEffect(() => {
     if (!isModal) return undefined;
@@ -52,9 +54,14 @@ export default function Login({ isModal = false, onClose }) {
       }
 
       if (data.requiresOTP) {
-        navigate('/otp-verification', { state: { email: email } });
+        navigate('/otp-verification', {
+          state: { email, returnTo: returnToMarketplace ? '/marketplace' : undefined }
+        });
       } else if (data.token && data.staff?.role) {
-        navigate(getDashboardPath(data.staff.role) || '/unauthorized', { replace: true });
+        const destination = returnToMarketplace && data.staff.role === 'customer'
+          ? '/marketplace'
+          : getDashboardPath(data.staff.role) || '/unauthorized';
+        navigate(destination, { replace: true });
       } else {
         navigate('/dashboard');
       }
@@ -393,7 +400,12 @@ export default function Login({ isModal = false, onClose }) {
         
         <p style={{ marginTop: '28px', marginBottom: '0', fontSize: '14px', color: '#94a3b8' }}>
           Don't have an account?{' '}
-          <Link to="/register" className="signup-link" style={{ color: '#818cf8', fontWeight: '700', textDecoration: 'none' }}>
+          <Link
+            to="/register"
+            state={returnToMarketplace ? { returnTo: '/marketplace' } : undefined}
+            className="signup-link"
+            style={{ color: '#818cf8', fontWeight: '700', textDecoration: 'none' }}
+          >
             Sign up
           </Link>
         </p>

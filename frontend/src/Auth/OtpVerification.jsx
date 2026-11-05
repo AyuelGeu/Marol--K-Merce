@@ -11,6 +11,7 @@ export default function OtpVerification() {
   
   // Retrieve the email passed from the Login or Register page
   const email = location.state?.email;
+  const returnToMarketplace = location.state?.returnTo === '/marketplace';
 
   useEffect(() => {
     // If someone navigates to /otp-verification directly without logging in, send them back
@@ -51,7 +52,10 @@ export default function OtpVerification() {
         vendor: '/vendor/dashboard',
         customer: '/customer/dashboard'
       };
-      navigate(dashboardByRole[data.staff.role] || '/unauthorized', { replace: true });
+      const destination = returnToMarketplace && data.staff.role === 'customer'
+        ? '/marketplace'
+        : dashboardByRole[data.staff.role] || '/unauthorized';
+      navigate(destination, { replace: true });
     } catch (error) {
       if (error.response) {
         // Server returned 4xx or 5xx status code
@@ -105,7 +109,11 @@ export default function OtpVerification() {
 
         <p style={{ marginTop: '24px', marginBottom: '0', fontSize: '14px', color: '#6B7280' }}>
           Didn't receive it or want to use a different account?{' '}
-          <Link to="/login" style={{ color: '#2563EB', fontWeight: '600', textDecoration: 'none' }}>
+          <Link
+            to="/login"
+            state={returnToMarketplace ? { returnTo: '/marketplace' } : undefined}
+            style={{ color: '#2563EB', fontWeight: '600', textDecoration: 'none' }}
+          >
             Back to Login
           </Link>
         </p>

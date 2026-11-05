@@ -251,7 +251,7 @@ export default function Marketplace() {
 
       <section className="marketplace-intro">
         <span>THE K-MERCE MARKETPLACE</span>
-        <h1>Shop independent stores</h1>
+        <h1>Shop Independent stores</h1>
         <p>Discover products listed by approved K-Merce vendors and order directly from their stores.</p>
       </section>
 
