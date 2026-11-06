@@ -3,13 +3,21 @@ import axios from 'axios';
 import './MarketplaceChatbot.css';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-const SUGGESTED_QUESTIONS = [
+const MARKETPLACE_QUESTIONS = [
   'How do I place an order?',
   'How does M-Pesa payment work?',
   'How can I become a vendor?'
 ];
+const ADMIN_QUESTIONS = [
+  'What can I manage from the admin dashboard?',
+  'How do vendor approvals work?',
+  'How are M-Pesa payments handled?'
+];
 
-export default function MarketplaceChatbot() {
+export default function MarketplaceChatbot({ audience = 'marketplace' }) {
+  const isAdmin = audience === 'admin';
+  const suggestedQuestions = isAdmin ? ADMIN_QUESTIONS : MARKETPLACE_QUESTIONS;
+  const inputId = isAdmin ? 'admin-chatbot-input' : 'marketplace-chatbot-input';
   const [isOpen, setIsOpen] = useState(false);
   const [question, setQuestion] = useState('');
   const [messages, setMessages] = useState([]);
@@ -40,10 +48,15 @@ export default function MarketplaceChatbot() {
     setIsSending(true);
 
     try {
-      const response = await axios.post(`${BACKEND_URL}/api/chat`, {
+      const token = isAdmin ? localStorage.getItem('jwt_token') : '';
+      const response = await axios.post(`${BACKEND_URL}${isAdmin ? '/api/admin/chat' : '/api/chat'}`, {
         question: trimmedQuestion
       }, {
-        headers: { 'ngrok-skip-browser-warning': 'true' }
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'ngrok-skip-browser-warning': 'true'
+        },
+        withCredentials: true
       });
       const answer = response.data?.answer;
       if (typeof answer !== 'string' || !answer.trim()) {
@@ -78,15 +91,15 @@ export default function MarketplaceChatbot() {
           id="marketplace-chatbot-panel"
           className="marketplace-chatbot-panel"
           role="dialog"
-          aria-label="K-Merce marketplace assistant"
+          aria-label={isAdmin ? 'K-Merce system assistant' : 'K-Merce marketplace assistant'}
           aria-modal="false"
         >
           <header className="marketplace-chatbot-header">
             <div className="marketplace-chatbot-brand">
               <span className="marketplace-chatbot-avatar" aria-hidden="true">K</span>
               <div>
-                <strong>K-AI Assistant</strong>
-                <span>Ask about using the marketplace</span>
+                <strong>{isAdmin ? 'K-AI System Assistant' : 'K-AI Assistant'}</strong>
+                <span>{isAdmin ? 'Ask about the K-Merce system' : 'Ask about using the marketplace'}</span>
               </div>
             </div>
             <button
@@ -104,9 +117,13 @@ export default function MarketplaceChatbot() {
               <div className="marketplace-chatbot-welcome">
                 <span aria-hidden="true">✦</span>
                 <h2>How can I help?</h2>
-                <p>Ask me about shopping, payments, orders, or getting started as a vendor.</p>
+                <p>
+                  {isAdmin
+                    ? 'Ask about K-Merce, including administration, vendors, customers, orders, and payments.'
+                    : 'Ask me about shopping, payments, orders, or getting started as a vendor.'}
+                </p>
                 <div className="marketplace-chatbot-suggestions">
-                  {SUGGESTED_QUESTIONS.map((suggestion) => (
+                  {suggestedQuestions.map((suggestion) => (
                     <button
                       key={suggestion}
                       type="button"
@@ -139,11 +156,11 @@ export default function MarketplaceChatbot() {
           {error && <p className="marketplace-chatbot-error" role="alert">{error}</p>}
 
           <form className="marketplace-chatbot-form" onSubmit={handleSubmit}>
-            <label className="marketplace-chatbot-visually-hidden" htmlFor="marketplace-chatbot-input">
-              Ask the K-AI Assistant
+            <label className="marketplace-chatbot-visually-hidden" htmlFor={inputId}>
+              {isAdmin ? 'Ask the K-Merce System Assistant' : 'Ask the K-AI Assistant'}
             </label>
             <textarea
-              id="marketplace-chatbot-input"
+              id={inputId}
               ref={inputRef}
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
@@ -154,7 +171,7 @@ export default function MarketplaceChatbot() {
                 }
               }}
               maxLength={1000}
-              placeholder="Ask a question…"
+              placeholder={isAdmin ? 'Ask about K-Merce…' : 'Ask a question…'}
               rows={1}
               disabled={isSending}
             />
@@ -179,7 +196,9 @@ export default function MarketplaceChatbot() {
         onClick={() => setIsOpen((open) => !open)}
         aria-expanded={isOpen}
         aria-controls="marketplace-chatbot-panel"
-        aria-label={isOpen ? 'Close marketplace assistant' : 'Open marketplace assistant'}
+        aria-label={isOpen
+          ? `Close ${isAdmin ? 'K-Merce system' : 'marketplace'} assistant`
+          : `Open ${isAdmin ? 'K-Merce system' : 'marketplace'} assistant`}
       >
         {isOpen ? (
           <span aria-hidden="true">×</span>
@@ -189,7 +208,7 @@ export default function MarketplaceChatbot() {
               <path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H6l-3 2v-6a7.5 7.5 0 1 1 17-3.5Z" />
               <path d="M8 11h.01M12 11h.01M16 11h.01" />
             </svg>
-            <span>Ask us</span>
+            <span>{isAdmin ? 'Ask AI' : 'Ask us'}</span>
           </>
         )}
       </button>

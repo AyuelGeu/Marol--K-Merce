@@ -6,6 +6,9 @@ async function ingestData(textChunks) {
         await mongoose.connect(process.env.MONGO_URI);
         const collection = mongoose.connection.db.collection('documents');
 
+        // Clear existing documents to prevent duplicates on re-runs
+        await collection.deleteMany({});
+
         // Dynamically import the ES Module
         const { pipeline } = await import('@xenova/transformers');
         const generateEmbedding = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
@@ -25,11 +28,9 @@ async function ingestData(textChunks) {
     }
 }
 
-// Add your custom M-Pesa or business knowledge here
+// Pass your custom knowledge base chunks here
 ingestData([
-    "In order to order, you need to have an M-Pesa account and sufficient balance.",
-    "M-Pesa is a mobile money transfer service that allows users to send and receive money using their mobile phones.",
-    "To make a payment using M-Pesa, you need to enter the recipient's phone number and the amount you wish to send.",
+    // Add your system's text chunks or load them from a file here
 ]).catch(error => {
     console.error('Failed to ingest AI reference data:', error);
     process.exitCode = 1;

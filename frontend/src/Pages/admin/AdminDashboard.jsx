@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import './AdminDashboard.css';
+import MarketplaceChatbot from '../MarketplaceChatbot';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
@@ -628,6 +629,7 @@ export default function AdminDashboard() {
           </footer>
         </div>
       </main>
+      <MarketplaceChatbot audience="admin" />
     </div>
   );
 }
