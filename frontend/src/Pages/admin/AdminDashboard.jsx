@@ -203,7 +203,8 @@ export default function AdminDashboard() {
       && user.vendorProfile?.pendingStoreName
   ), [users]);
   const pendingVendorApprovals = useMemo(() => users.filter(
-    (user) => user.role === 'vendor' && !user.vendorProfile?.isApproved
+    (user) => user.vendorApplication?.status === 'pending'
+      || (user.role === 'vendor' && !user.vendorProfile?.isApproved)
   ), [users]);
 
   const reviewStoreName = async (vendorId, decision) => {
@@ -265,7 +266,12 @@ export default function AdminDashboard() {
       );
       setUsers((currentUsers) => currentUsers.map((user) => (
         user._id === vendorId
-          ? { ...user, vendorProfile: { ...user.vendorProfile, isApproved: response.data.isApproved } }
+          ? {
+            ...user,
+            role: response.data.role,
+            vendorProfile: response.data.vendorProfile,
+            vendorApplication: response.data.vendorApplication
+          }
           : user
       )));
     } catch (requestError) {
@@ -460,8 +466,8 @@ export default function AdminDashboard() {
             <div className="admin-approvals-heading">
               <div>
                 <div className="admin-eyebrow">SELLER ACCESS</div>
-                <h2 id="vendor-approvals-title">Vendor account approvals</h2>
-                <p>Approve vendor accounts before they can publish products.</p>
+                <h2 id="vendor-approvals-title">Vendor application approvals</h2>
+                <p>Approving an application changes the applicant’s role to vendor.</p>
               </div>
               <span className={`admin-approval-count${pendingVendorApprovals.length ? ' has-pending' : ''}`} role="status">
                 {pendingVendorApprovals.length} pending
@@ -478,7 +484,25 @@ export default function AdminDashboard() {
                   <article className="admin-approval-item" key={vendor._id}>
                     <div className="admin-approval-vendor">
                       <strong>{vendor.name || vendor.userName || 'Vendor'}</strong>
-                      <span>{vendor.email} · Store name: {vendor.vendorProfile?.storeName || 'Not approved yet'}</span>
+                      <span>{vendor.email} · Store name: {vendor.vendorApplication?.storeName || vendor.vendorProfile?.pendingStoreName || vendor.vendorProfile?.storeName || 'Not submitted'}</span>
+                      {vendor.vendorApplication?.storeDescription && (
+                        <span>Store details: {vendor.vendorApplication.storeDescription}</span>
+                      )}
+                      {vendor.vendorApplication?.contactNumber && (
+                        <span>Contact: {vendor.vendorApplication.contactNumber}</span>
+                      )}
+                      {vendor.vendorApplication?.storeAddress && (
+                        <span>Address: {vendor.vendorApplication.storeAddress}</span>
+                      )}
+                      {vendor.vendorApplication?.storeCategory && (
+                        <span>Category: {vendor.vendorApplication.storeCategory}</span>
+                      )}
+                      {vendor.vendorApplication?.location?.coordinates && (
+                        <span>
+                          Location: {vendor.vendorApplication.location.coordinates[1].toFixed(4)},{' '}
+                          {vendor.vendorApplication.location.coordinates[0].toFixed(4)}
+                        </span>
+                      )}
                     </div>
                     <div className="admin-approval-actions">
                       <button
@@ -487,7 +511,7 @@ export default function AdminDashboard() {
                         onClick={() => approveVendorAccount(vendor._id)}
                         disabled={Boolean(approvingVendorId)}
                       >
-                        {approvingVendorId === vendor._id ? 'Approving…' : 'Approve vendor'}
+                        {approvingVendorId === vendor._id ? 'Approving…' : 'Approve application'}
                       </button>
                     </div>
                   </article>

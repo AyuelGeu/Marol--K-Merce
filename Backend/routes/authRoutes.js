@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const Staff = require('../models/Users');
 const {
     registerStaff,
+    applyAsVendor,
     loginStaff,
     verifyOTP,
     forgotPassword,
@@ -18,6 +19,7 @@ const uploadProfilePicture = require('../middleware/profilePictureUpload');
 
 // Public Routes (No middleware needed)
 router.post('/register', registerStaff);
+router.post('/vendor-application', applyAsVendor);
 router.post('/login', loginStaff);
 router.post('/verify-otp', verifyOTP);
 
@@ -55,19 +57,37 @@ router.put(
 );
 router.put('/admin/vendors/:vendorId/approval', protect, authorize('admin'), async (req, res) => {
     try {
-        const vendor = await Staff.findOneAndUpdate(
-            { _id: req.params.vendorId, role: 'vendor' },
-            { $set: { 'vendorProfile.isApproved': true } },
-            { returnDocument: 'after', runValidators: true }
-        );
+        const vendor = await Staff.findOne({
+            _id: req.params.vendorId,
+            $or: [
+                { role: 'customer', 'vendorApplication.status': 'pending' },
+                { role: 'vendor', 'vendorProfile.isApproved': { $ne: true } }
+            ]
+        });
         if (!vendor) {
-            return res.status(404).json({ message: 'Vendor account was not found' });
+            return res.status(404).json({ message: 'Pending vendor application was not found' });
         }
+
+        if (vendor.role === 'customer') {
+            vendor.role = 'vendor';
+            vendor.vendorProfile.storeName = vendor.vendorApplication.storeName;
+            vendor.vendorProfile.pendingStoreName = '';
+            vendor.vendorProfile.storeDescription = vendor.vendorApplication.storeDescription;
+            vendor.vendorProfile.storeNameStatus = 'approved';
+            vendor.vendorProfile.isApproved = true;
+            vendor.vendorApplication.status = 'approved';
+        } else {
+            vendor.vendorProfile.isApproved = true;
+        }
+        await vendor.save();
 
         return res.status(200).json({
             message: 'Vendor account approved',
             vendorId: vendor._id,
-            isApproved: vendor.vendorProfile.isApproved
+            isApproved: vendor.vendorProfile.isApproved,
+            role: vendor.role,
+            vendorProfile: vendor.vendorProfile,
+            vendorApplication: vendor.vendorApplication
         });
     } catch (error) {
         console.error('Error approving vendor account:', error);

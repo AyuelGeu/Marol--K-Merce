@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import './Marketplace.css';
 import MarketplaceChatbot from './MarketplaceChatbot';
+import Login from '../Auth/Login';
+import Register from '../Auth/Register';
+import VendorApplication from './VendorApplication';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const CART_STORAGE_KEY = 'marketplace_cart';
@@ -36,6 +39,9 @@ export default function Marketplace() {
   const [category, setCategory] = useState('All categories');
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [isVendorApplicationOpen, setIsVendorApplicationOpen] = useState(false);
   const [paymentPhone, setPaymentPhone] = useState(() => {
     const currentUser = readCurrentUser();
     return currentUser.phone || currentUser.phoneNumber || '';
@@ -47,7 +53,8 @@ export default function Marketplace() {
   const [paymentError, setPaymentError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState('');
   const user = readCurrentUser();
-  const isCustomer = user.role === 'customer' && Boolean(localStorage.getItem('jwt_token'));
+  const isLoggedIn = Boolean(localStorage.getItem('jwt_token') && user.role);
+  const isCustomer = user.role === 'customer' && isLoggedIn;
 
   const normalizeMpesaPhone = (value) => {
     const cleaned = String(value || '').replace(/\D/g, '');
@@ -242,17 +249,30 @@ export default function Marketplace() {
           <img src="/brand-logo.png" alt="K-Merce" />
         </Link>
         <nav aria-label="Marketplace navigation">
-          <Link to="/customer/dashboard">Home</Link>
           {isCustomer && <Link to="/customer/dashboard#orders">My orders</Link>}
           {user.role === 'vendor' && <Link to="/vendor/dashboard#products">Seller workspace</Link>}
-          {!isCustomer && <Link to="/login">Sign in</Link>}
+          {!isLoggedIn && (
+            <div className="marketplace-auth-actions">
+              <button type="button" onClick={() => setIsLoginOpen(true)}>Log In</button>
+              <button type="button" onClick={() => setIsRegisterOpen(true)}>Register</button>
+            </div>
+          )}
         </nav>
       </header>
 
       <section className="marketplace-intro">
-        <span>THE K-MERCE MARKETPLACE</span>
-        <h1>Shop Independent stores</h1>
-        <p>Discover products listed by approved K-Merce vendors and order directly from their stores.</p>
+        <div>
+          <span>THE K-MERCE MARKETPLACE</span>
+          <h1>Shop Independent stores</h1>
+          <p>Discover products listed by approved K-Merce vendors and order directly from their stores.</p>
+        </div>
+        <button
+          className="marketplace-vendor-apply"
+          type="button"
+          onClick={() => setIsVendorApplicationOpen(true)}
+        >
+          Apply to be a vendor
+        </button>
       </section>
 
       <div className="marketplace-toolbar">
@@ -272,7 +292,7 @@ export default function Marketplace() {
         </label>
       </div>
 
-      <div className="marketplace-layout">
+      <div className={`marketplace-layout${isLoggedIn ? '' : ' is-view-only'}`}>
         <section className="marketplace-results" aria-label="Marketplace products">
           {isLoading && <p className="marketplace-state">Loading products…</p>}
           {loadError && <p className="marketplace-error" role="alert">{loadError}</p>}
@@ -329,13 +349,15 @@ export default function Marketplace() {
                       <span className="marketplace-store-name">Sold by {product.storeName}</span>
                       <div className="marketplace-product-buy">
                         <strong>KSh {Number(product.price).toFixed(2)}</strong>
-                        <button
-                          type="button"
-                          disabled={isPaying || Boolean(pendingPaymentId)}
-                          onClick={() => addToCart(product)}
-                        >
-                          Add to cart
-                        </button>
+                        {isLoggedIn && (
+                          <button
+                            type="button"
+                            disabled={isPaying || Boolean(pendingPaymentId)}
+                            onClick={() => addToCart(product)}
+                          >
+                            Add to cart
+                          </button>
+                        )}
                       </div>
                     </div>
                   </article>
@@ -345,7 +367,7 @@ export default function Marketplace() {
           ))}
         </section>
 
-        <aside className="marketplace-cart" aria-label="Shopping cart">
+        {isLoggedIn && <aside className="marketplace-cart" aria-label="Shopping cart">
           <div className="marketplace-cart-heading">
             <h2>Your cart</h2>
             <span>{cartCount} {cartCount === 1 ? 'item' : 'items'}</span>
@@ -415,9 +437,14 @@ export default function Marketplace() {
               {!pendingPaymentId && <Link to="/customer/dashboard#orders"> View my orders</Link>}
             </p>
           )}
-        </aside>
+        </aside>}
       </div>
-      <MarketplaceChatbot />
+      {isLoggedIn && <MarketplaceChatbot />}
+      {isLoginOpen && <Login isModal onClose={() => setIsLoginOpen(false)} />}
+      {isRegisterOpen && <Register isModal onClose={() => setIsRegisterOpen(false)} />}
+      {isVendorApplicationOpen && (
+        <VendorApplication isModal onClose={() => setIsVendorApplicationOpen(false)} />
+      )}
     </main>
   );
 }

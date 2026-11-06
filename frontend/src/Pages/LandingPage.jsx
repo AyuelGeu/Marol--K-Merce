@@ -486,6 +486,27 @@ export default function LandingPage() {
           </div>
         </section>
 
+        <section id="vendor-application" style={styles.vendorApplication}>
+          <div style={styles.vendorApplicationContent}>
+            <div>
+              <span style={styles.vendorApplicationEyebrow}>SELL ON K-MERCE</span>
+              <h2 style={styles.vendorApplicationTitle}>Bring your store to K-Merce</h2>
+              <p style={styles.vendorApplicationDescription}>
+                Ready to sell with us? Submit your store details for administrator approval.
+              </p>
+              <Link to="/vendor-application" style={styles.vendorApplicationButton}>
+                Apply to be a vendor
+              </Link>
+            </div>
+            <div style={styles.vendorApplicationPreview}>
+              <strong>What happens next?</strong>
+              <p style={styles.vendorApplicationNote}>
+                Create your applicant account, verify your email, and we’ll send your store application to our administrators. Your account becomes a vendor after approval.
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* 6. FLASH SALE & PRODUCT CATALOG */}
         <main style={styles.mainContent}>
           <div style={styles.sectionHeader}>
@@ -941,6 +962,61 @@ const styles = {
     margin: 0,
     fontSize: '0.8rem',
     color: '#64748B'
+  },
+  vendorApplication: {
+    padding: '56px 4%',
+    backgroundColor: '#F8FAFC',
+    borderBottom: '1px solid #E2E8F0'
+  },
+  vendorApplicationContent: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    alignItems: 'center',
+    gap: '40px',
+    maxWidth: '1100px',
+    margin: '0 auto'
+  },
+  vendorApplicationEyebrow: {
+    color: '#4F46E5',
+    fontSize: '.8rem',
+    fontWeight: '700',
+    letterSpacing: '1px'
+  },
+  vendorApplicationTitle: {
+    margin: '12px 0',
+    color: '#0F172A',
+    fontSize: '2rem'
+  },
+  vendorApplicationDescription: {
+    maxWidth: '460px',
+    color: '#475569',
+    lineHeight: 1.6
+  },
+  vendorApplicationPreview: {
+    padding: '24px',
+    color: '#334155',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #E2E8F0',
+    borderRadius: '12px',
+    boxShadow: '0 10px 24px rgba(15, 23, 42, .06)'
+  },
+  vendorApplicationButton: {
+    display: 'inline-flex',
+    minHeight: '46px',
+    alignItems: 'center',
+    padding: '10px 18px',
+    borderRadius: '7px',
+    backgroundColor: '#4F46E5',
+    color: '#FFFFFF',
+    fontSize: '.95rem',
+    fontWeight: '700',
+    textDecoration: 'none'
+  },
+  vendorApplicationNote: {
+    margin: '10px 0 0',
+    color: '#64748B',
+    fontSize: '.8rem',
+    lineHeight: 1.5
   },
   mainContent: {
     padding: '40px 4%',

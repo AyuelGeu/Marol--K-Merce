@@ -16,6 +16,7 @@ import AdminVendors from './Pages/admin/AdminVendors.jsx';
 import VendorDashboard from './Pages/vendor/VendorDashboard.jsx';
 import CustomerDashboard from './Pages/customer/CustomerDashboard.jsx';
 import Marketplace from './Pages/Marketplace.jsx';
+import VendorApplication from './Pages/VendorApplication.jsx';
 
 //Security Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -58,9 +59,10 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Start visitors on the landing page */}
-        <Route path="/" element={<LandingPage />} />
+        {/* Start visitors in the marketplace */}
+        <Route path="/" element={<Marketplace />} />
         <Route path="/marketplace" element={<Marketplace />} />
+        <Route path="/vendor-application" element={<VendorApplication />} />
         
         {/* Auth Routes */}
         <Route element={<LandingPage />} path="/Pages/LandingPage" />

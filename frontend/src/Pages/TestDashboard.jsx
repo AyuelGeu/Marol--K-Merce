@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [timeframe, setTimeframe] = useState('12 Months');
-  const navigate = useNavigate();
 
   const navItems = [
     { name: 'Dashboard', icon: (

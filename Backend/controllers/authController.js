@@ -60,6 +60,126 @@ exports.registerStaff = async(req, res) => {
     }
 };
 
+exports.applyAsVendor = async (req, res) => {
+    const {
+        name,
+        email,
+        password,
+        storeName,
+        storeDescription,
+        contactNumber,
+        storeAddress,
+        storeCategory,
+        location
+    } = req.body;
+
+    if (
+        typeof name !== 'string' || !name.trim()
+        || typeof email !== 'string' || !email.trim()
+        || typeof password !== 'string'
+        || typeof storeName !== 'string' || !storeName.trim()
+        || typeof contactNumber !== 'string' || !contactNumber.trim()
+        || typeof storeAddress !== 'string' || !storeAddress.trim()
+        || typeof storeCategory !== 'string' || !storeCategory.trim()
+        || typeof storeDescription !== 'string' || !storeDescription.trim()
+    ) {
+        return res.status(400).json({
+            message: 'Name, email, password, store name, contact number, store address, category, and description are required'
+        });
+    }
+
+    const applicantName = name.trim();
+    const applicantEmail = email.trim().toLowerCase();
+    const requestedStoreName = storeName.trim();
+    const requestedContactNumber = contactNumber.trim();
+    const requestedStoreAddress = storeAddress.trim();
+    const requestedStoreCategory = storeCategory.trim();
+    const requestedStoreDescription = storeDescription.trim();
+    if (applicantName.length > 100) {
+        return res.status(400).json({ message: 'Name must be 100 characters or fewer' });
+    }
+    if (applicantEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(applicantEmail)) {
+        return res.status(400).json({ message: 'Enter a valid email address' });
+    }
+    if (password.length < 8 || Buffer.byteLength(password, 'utf8') > 72) {
+        return res.status(400).json({ message: 'Password must be at least 8 characters and no more than 72 bytes' });
+    }
+    if (requestedStoreName.length > 100) {
+        return res.status(400).json({ message: 'Store name must be 100 characters or fewer' });
+    }
+    if (requestedContactNumber.length > 20) {
+        return res.status(400).json({ message: 'Contact number must be 20 characters or fewer' });
+    }
+    if (requestedStoreAddress.length > 200) {
+        return res.status(400).json({ message: 'Store address must be 200 characters or fewer' });
+    }
+    if (requestedStoreCategory.length > 100) {
+        return res.status(400).json({ message: 'Store category must be 100 characters or fewer' });
+    }
+    if (requestedStoreDescription.length > 500) {
+        return res.status(400).json({ message: 'Store description must be 500 characters or fewer' });
+    }
+    if (
+        !location
+        || location.type !== 'Point'
+        || !Array.isArray(location.coordinates)
+        || location.coordinates.length !== 2
+        || !location.coordinates.every(Number.isFinite)
+        || Math.abs(location.coordinates[0]) > 180
+        || Math.abs(location.coordinates[1]) > 90
+    ) {
+        return res.status(400).json({ message: 'Choose a valid store location on the map' });
+    }
+
+    try {
+        const userExists = await Staff.findOne({ email: applicantEmail });
+        if (userExists) {
+            return res.status(409).json({ message: 'An account with this email already exists' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const otp = generateOTP();
+        const applicant = new Staff({
+            email: applicantEmail,
+            password: hashedPassword,
+            name: applicantName,
+            role: 'customer',
+            otp,
+            otpExpiry: Date.now() + 10 * 60 * 1000,
+            vendorApplication: {
+                storeName: requestedStoreName,
+                storeDescription: requestedStoreDescription,
+                contactNumber: requestedContactNumber,
+                storeAddress: requestedStoreAddress,
+                storeCategory: requestedStoreCategory,
+                location: {
+                    type: 'Point',
+                    coordinates: location.coordinates
+                },
+                status: 'pending',
+                submittedAt: new Date()
+            }
+        });
+
+        await applicant.save();
+        if (process.env.NODE_ENV !== 'test') {
+            await sendOTPEmail(applicantEmail, otp);
+        }
+
+        return res.status(201).json({
+            message: 'Vendor application submitted. Verify your email while an administrator reviews your application.',
+            requiresOTP: true,
+            email: applicantEmail
+        });
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(409).json({ message: 'An account with this email already exists' });
+        }
+        console.error('Error submitting vendor application:', error);
+        return res.status(500).json({ message: 'Unable to submit vendor application' });
+    }
+};
+
 // Login Controller
 exports.loginStaff = async(req, res) => {
     try {

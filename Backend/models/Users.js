@@ -62,6 +62,56 @@ const staffSchema = new mongoose.Schema({
             default: false 
         }
     },
+    vendorApplication: {
+        storeName: {
+            type: String,
+            trim: true,
+            maxlength: 100
+        },
+        storeDescription: {
+            type: String,
+            trim: true,
+            maxlength: 500
+        },
+        contactNumber: {
+            type: String,
+            trim: true,
+            maxlength: 20
+        },
+        storeAddress: {
+            type: String,
+            trim: true,
+            maxlength: 200
+        },
+        storeCategory: {
+            type: String,
+            trim: true,
+            maxlength: 100
+        },
+        location: {
+            type: {
+                type: String,
+                enum: ['Point'],
+                default: 'Point'
+            },
+            coordinates: {
+                type: [Number],
+                default: undefined,
+                validate: {
+                    validator: (coordinates) => (
+                        !coordinates || coordinates.length === 0 || coordinates.length === 2
+                    ),
+                    message: 'Location coordinates must contain longitude and latitude'
+                }
+            }
+        },
+        status: {
+            type: String,
+            enum: ['pending', 'approved'],
+            default: undefined
+        },
+        submittedAt: Date
+    },
     // Customer shipping addresses
     addresses: [{
         street: String,
