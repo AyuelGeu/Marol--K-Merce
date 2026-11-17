@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Login from './Auth/Login';
 import Register from './Auth/Register';
 import OtpVerification from './Auth/OtpVerification';
@@ -21,6 +22,52 @@ import VendorApplication from './Pages/VendorApplication.jsx';
 //Security Components
 import ProtectedRoute from './components/ProtectedRoute';
 import { getDashboardPath } from './utils/roleRoutes';
+
+const INACTIVITY_TIMEOUT_MS = 3 * 60 * 1000;
+
+function InactivityLogout() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    if (!localStorage.getItem('jwt_token')) {
+      return undefined;
+    }
+
+    let timeoutId;
+    const resetTimeout = () => {
+      if (!localStorage.getItem('jwt_token')) {
+        return;
+      }
+
+      window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        if (!localStorage.getItem('jwt_token')) {
+          return;
+        }
+
+        localStorage.removeItem('jwt_token');
+        localStorage.removeItem('user_data');
+        navigate('/login', { replace: true });
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+    const activityEvents = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'pointerdown'];
+
+    activityEvents.forEach((eventName) => {
+      window.addEventListener(eventName, resetTimeout, { passive: true });
+    });
+    resetTimeout();
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      activityEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, resetTimeout);
+      });
+    };
+  }, [navigate, pathname]);
+
+  return null;
+}
 
 function Unauthorized() {
   return (
@@ -58,9 +105,10 @@ function RoleDashboardRedirect() {
 function App() {
   return (
     <Router>
+      <InactivityLogout />
       <Routes>
         {/* Start visitors in the marketplace */}
-        <Route path="/" element={<Marketplace />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/marketplace" element={<Marketplace />} />
         <Route path="/vendor-application" element={<VendorApplication />} />
         

@@ -45,6 +45,7 @@ export default function VendorApplication({ isModal = false, onClose }) {
     if (clickedLatLng) {
       setApplication((current) => ({
         ...current,
+        storeAddress: `${clickedLatLng.lat}, ${clickedLatLng.lng}`,
         location: {
           type: 'Point',
           coordinates: [clickedLatLng.lng, clickedLatLng.lat]

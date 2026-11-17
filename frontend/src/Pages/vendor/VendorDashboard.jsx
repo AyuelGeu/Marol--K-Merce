@@ -263,6 +263,666 @@ export default function VendorDashboard() {
 
   return (
     <div className="workspace-shell vendor-workspace">
+      <style>{`
+        .vendor-workspace,
+        .vendor-workspace * {
+          font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+        }
+
+        .vendor-workspace {
+          --vendor-forest: #146b55;
+          --vendor-deep: #103c32;
+          --vendor-mint: #e7f5ef;
+          --vendor-ink: #18352e;
+          position: relative;
+          isolation: isolate;
+          overflow: clip;
+          background:
+            radial-gradient(ellipse at 82% 4%, rgba(201, 235, 220, .42), transparent 34rem),
+            #f4f8f6;
+          color: var(--vendor-ink);
+        }
+
+        .vendor-workspace .workspace-sidebar {
+          border-right-color: rgba(255, 255, 255, .09);
+          background: linear-gradient(175deg, #123f34 0%, #0d3029 100%);
+          box-shadow: 12px 0 34px rgba(13, 48, 41, .09);
+        }
+
+        .vendor-workspace .workspace-brand {
+          padding: 5px 8px;
+        }
+
+        .vendor-workspace .workspace-brand-mark {
+          padding: 5px;
+          border: 1px solid rgba(255, 255, 255, .16);
+          background: rgba(255, 255, 255, .11);
+        }
+
+        .vendor-workspace .workspace-brand-copy strong {
+          color: #fff;
+          font-size: 13px;
+          letter-spacing: .13em;
+        }
+
+        .vendor-workspace .workspace-brand-copy small,
+        .vendor-workspace .workspace-nav-label,
+        .vendor-workspace .workspace-sidebar-foot {
+          color: #a9c8bd;
+        }
+
+        .vendor-workspace .workspace-nav-label {
+          margin-top: 44px;
+        }
+
+        .vendor-workspace .workspace-nav-link {
+          color: #d3e2dc;
+          transition: background .2s ease, color .2s ease, transform .2s ease;
+        }
+
+        .vendor-workspace .workspace-nav-link:hover,
+        .vendor-workspace .workspace-nav-link.is-active {
+          transform: translateX(2px);
+          background: rgba(161, 225, 198, .15);
+          color: #b6f0d1;
+        }
+
+        .vendor-workspace .workspace-nav-link.is-active::before {
+          width: 3px;
+          height: 22px;
+          margin-left: -12px;
+          border-radius: 0 4px 4px 0;
+          background: #79e0ad;
+          content: "";
+        }
+
+        .vendor-workspace .workspace-secure-card {
+          border-color: rgba(255, 255, 255, .15);
+          background: rgba(255, 255, 255, .08);
+          color: #f0faf5;
+        }
+
+        .vendor-workspace .workspace-secure-card small {
+          color: #a9c8bd;
+        }
+
+        .vendor-workspace .workspace-live-dot {
+          box-shadow: 0 0 0 4px rgba(115, 224, 169, .12);
+          background: #79e0ad;
+        }
+
+        .vendor-workspace .workspace-topbar {
+          position: relative;
+          z-index: 1;
+          border-bottom-color: #e7efeb;
+          background: rgba(255, 255, 255, .82);
+          backdrop-filter: blur(14px);
+        }
+
+        .vendor-workspace .workspace-breadcrumb {
+          color: #7e9189;
+          font-weight: 600;
+        }
+
+        .vendor-workspace .workspace-breadcrumb > span {
+          color: #b4c6be;
+        }
+
+        .vendor-workspace .workspace-user-avatar.vendor-avatar {
+          overflow: hidden;
+          border: 2px solid #fff;
+          background: linear-gradient(145deg, #d9f2e6, #a9dec5);
+          box-shadow: 0 0 0 1px #d5e9df;
+          color: #17684f;
+        }
+
+        .vendor-workspace .workspace-user-copy strong {
+          color: #263d35;
+          font-size: 12px;
+        }
+
+        .vendor-workspace .workspace-signout {
+          min-height: 35px;
+          padding: 0 13px;
+          border-color: #dce9e2;
+          border-radius: 10px;
+          background: #fff;
+          color: #4b665a;
+          font-size: 11px;
+          transition: border-color .2s ease, background .2s ease, color .2s ease;
+        }
+
+        .vendor-workspace .workspace-signout:hover {
+          border-color: #9dcdb6;
+          background: #f0faf5;
+          color: #17684f;
+        }
+
+        .vendor-workspace .workspace-content {
+          max-width: 1540px;
+          padding-top: 32px;
+          padding-bottom: 34px;
+        }
+
+        .vendor-workspace .workspace-welcome {
+          position: relative;
+          overflow: hidden;
+          min-height: 190px;
+          align-items: center;
+          margin-bottom: 24px;
+          padding: 30px clamp(24px, 4vw, 42px);
+          border: 1px solid rgba(255, 255, 255, .14);
+          border-radius: 22px;
+          background:
+            radial-gradient(circle at 85% 50%, rgba(139, 221, 175, .24), transparent 17rem),
+            linear-gradient(115deg, #124d3e 0%, #18765b 57%, #29956f 100%);
+          box-shadow: 0 16px 38px rgba(23, 100, 75, .17);
+        }
+
+        .vendor-workspace .workspace-welcome::after {
+          position: absolute;
+          top: -110px;
+          right: 12%;
+          width: 300px;
+          height: 300px;
+          border: 1px solid rgba(255, 255, 255, .13);
+          border-radius: 50%;
+          box-shadow: 0 0 0 32px rgba(255, 255, 255, .035), 0 0 0 66px rgba(255, 255, 255, .025);
+          content: "";
+          pointer-events: none;
+        }
+
+        .vendor-workspace .workspace-welcome > div,
+        .vendor-workspace .workspace-role-chip {
+          position: relative;
+          z-index: 1;
+        }
+
+        .vendor-workspace .workspace-welcome .workspace-eyebrow {
+          color: #b9f1d2;
+          font-size: 10px;
+          letter-spacing: .18em;
+        }
+
+        .vendor-workspace .workspace-welcome h1 {
+          margin: 0;
+          color: #fff;
+          font-size: clamp(29px, 3.2vw, 40px);
+          font-weight: 760;
+          letter-spacing: -.055em;
+          line-height: 1.12;
+        }
+
+        .vendor-workspace .workspace-welcome p {
+          max-width: 520px;
+          margin-top: 10px;
+          color: rgba(240, 255, 247, .78);
+          font-size: 13px;
+        }
+
+        .vendor-workspace .workspace-role-chip.vendor-chip {
+          padding: 9px 13px;
+          border: 1px solid rgba(255, 255, 255, .23);
+          background: rgba(255, 255, 255, .12);
+          color: #e5fff0;
+          font-size: 11px;
+          backdrop-filter: blur(8px);
+        }
+
+        .vendor-workspace .workspace-role-chip.vendor-chip > span {
+          background: #8af0b5;
+          box-shadow: 0 0 0 4px rgba(138, 240, 181, .14);
+        }
+
+        .vendor-workspace .workspace-card-grid {
+          gap: 16px;
+          margin-bottom: 22px;
+        }
+
+        .vendor-workspace .workspace-info-card {
+          position: relative;
+          overflow: hidden;
+          min-height: 164px;
+          padding: 20px;
+          border-color: #e4eee8;
+          border-radius: 17px;
+          background: linear-gradient(150deg, #fff 0%, #fbfefc 100%);
+          box-shadow: 0 7px 22px rgba(35, 83, 64, .055);
+          transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+        }
+
+        .vendor-workspace .workspace-info-card::after {
+          position: absolute;
+          top: 0;
+          right: 0;
+          left: 0;
+          height: 3px;
+          background: linear-gradient(90deg, #43ae7d, #b9e8cf);
+          content: "";
+        }
+
+        .vendor-workspace .workspace-info-card:hover {
+          transform: translateY(-3px);
+          border-color: #c6e3d3;
+          box-shadow: 0 13px 28px rgba(35, 83, 64, .1);
+        }
+
+        .vendor-workspace .workspace-info-icon {
+          width: 36px;
+          height: 36px;
+          margin-bottom: 14px;
+          border-radius: 11px;
+          background: #edf7f1;
+          color: #328863;
+        }
+
+        .vendor-workspace .workspace-info-icon.vendor-icon {
+          background: #e4f5eb;
+          color: #25825d;
+        }
+
+        .vendor-workspace .workspace-info-icon.workspace-icon-gold {
+          background: #fff6df;
+          color: #c08b28;
+        }
+
+        .vendor-workspace .workspace-info-label {
+          color: #86978f;
+          font-size: 9px;
+          letter-spacing: .13em;
+        }
+
+        .vendor-workspace .workspace-info-value {
+          margin-top: 6px;
+          color: #1d3c31;
+          font-size: 20px;
+        }
+
+        .vendor-workspace .workspace-info-value.workspace-email-value {
+          font-size: 14px;
+        }
+
+        .vendor-workspace .workspace-info-detail {
+          color: #82948b;
+          font-size: 10px;
+        }
+
+        .vendor-workspace .workspace-panel {
+          margin-bottom: 20px;
+          border-color: #e3ede7;
+          border-radius: 17px;
+          background: rgba(255, 255, 255, .96);
+          box-shadow: 0 7px 24px rgba(35, 83, 64, .055);
+        }
+
+        .vendor-workspace .workspace-panel-heading {
+          padding: 23px 24px 18px;
+        }
+
+        .vendor-workspace .workspace-panel-heading .workspace-eyebrow {
+          color: #358563;
+          font-size: 9px;
+          letter-spacing: .15em;
+        }
+
+        .vendor-workspace .workspace-panel-heading h2 {
+          color: #1d3c31;
+          font-size: 19px;
+          letter-spacing: -.035em;
+        }
+
+        .vendor-workspace .workspace-panel-heading p {
+          color: #84958d;
+          font-size: 11px;
+        }
+
+        .vendor-workspace .workspace-status-pill {
+          padding: 7px 11px;
+          border: 1px solid #d5ecdf;
+          background: #edf8f1;
+          color: #26734f;
+          font-size: 10px;
+        }
+
+        .vendor-workspace .workspace-status-pill.is-pending {
+          border-color: #f1e4c4;
+          background: #fff8e9;
+          color: #9c7425;
+        }
+
+        .vendor-workspace .vendor-order-notifications {
+          background: linear-gradient(135deg, #fff 0%, #fbfefc 100%);
+        }
+
+        .vendor-workspace .vendor-priority-link {
+          padding: 8px 11px;
+          border: 1px solid #d7eade;
+          border-radius: 9px;
+          background: #f3faf5;
+          color: #26734f;
+          transition: background .2s ease, border-color .2s ease;
+        }
+
+        .vendor-workspace .vendor-priority-link:hover {
+          border-color: #a8d1b8;
+          background: #e8f6ed;
+          color: #15583b;
+          text-decoration: none;
+        }
+
+        .vendor-workspace .vendor-priority-list {
+          gap: 10px;
+          padding: 0 24px 23px;
+        }
+
+        .vendor-workspace .vendor-priority-item {
+          padding: 13px 14px;
+          border-color: #e5eee8;
+          border-radius: 11px;
+          background: #fcfefc;
+          transition: border-color .18s ease, background .18s ease, transform .18s ease;
+        }
+
+        .vendor-workspace .vendor-priority-item:hover {
+          transform: translateY(-1px);
+          border-color: #c6e3d3;
+          background: #f7fcf8;
+        }
+
+        .vendor-workspace .vendor-priority-rank {
+          border-radius: 7px;
+          background: #eaf6ee;
+          color: #317b53;
+        }
+
+        .vendor-workspace .vendor-priority-details strong,
+        .vendor-workspace .vendor-product-row strong {
+          color: #254438;
+        }
+
+        .vendor-workspace .vendor-priority-value {
+          color: #23744e;
+        }
+
+        .vendor-workspace .vendor-store-name-form > label,
+        .vendor-workspace .vendor-product-form-grid > label {
+          color: #587267;
+          font-size: 11px;
+          font-weight: 650;
+        }
+
+        .vendor-workspace .vendor-store-name-controls > input,
+        .vendor-workspace .vendor-product-form-grid input,
+        .vendor-workspace .vendor-product-form-grid textarea {
+          min-height: 42px;
+          padding: 10px 12px;
+          border-color: #dce9e1;
+          border-radius: 9px;
+          background: #fff;
+          color: #254438;
+          font-size: 12px;
+          transition: border-color .18s ease, box-shadow .18s ease;
+        }
+
+        .vendor-workspace .vendor-store-name-controls > input:focus,
+        .vendor-workspace .vendor-product-form-grid input:focus,
+        .vendor-workspace .vendor-product-form-grid textarea:focus {
+          border-color: #48a77a;
+          outline: 0;
+          box-shadow: 0 0 0 3px rgba(72, 167, 122, .16);
+        }
+
+        .vendor-workspace .vendor-store-name-controls > button,
+        .vendor-workspace .vendor-product-submit-row > button {
+          min-height: 41px;
+          padding: 0 16px;
+          border: 1px solid #176a4c;
+          border-radius: 9px;
+          background: linear-gradient(135deg, #25865e, #17684d);
+          box-shadow: 0 4px 10px rgba(23, 104, 77, .14);
+          color: #fff;
+          font-size: 11px;
+          font-weight: 700;
+          transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+        }
+
+        .vendor-workspace .vendor-store-name-controls > button:hover:not(:disabled),
+        .vendor-workspace .vendor-product-submit-row > button:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 7px 15px rgba(23, 104, 77, .2);
+          filter: brightness(1.05);
+        }
+
+        .vendor-workspace .vendor-product-form {
+          gap: 15px;
+          padding: 18px;
+          border-color: #e5eee8;
+          border-radius: 13px;
+          background: linear-gradient(145deg, #f8fbf9, #fff);
+        }
+
+        .vendor-workspace .vendor-product-form-grid {
+          gap: 14px;
+        }
+
+        .vendor-workspace .vendor-product-image-field input[type="file"] {
+          min-height: 44px;
+          padding: 7px;
+          background: #fbfdfb;
+        }
+
+        .vendor-workspace .vendor-product-image-field input[type="file"]::file-selector-button {
+          margin-right: 10px;
+          padding: 7px 10px;
+          border: 0;
+          border-radius: 6px;
+          background: #e8f4ec;
+          color: #28714d;
+          cursor: pointer;
+          font: inherit;
+          font-weight: 650;
+        }
+
+        .vendor-workspace .vendor-listing-notice {
+          border-color: #f0e2bd;
+          border-radius: 10px;
+          background: #fffaf0;
+          color: #8e6e2b;
+          line-height: 1.6;
+        }
+
+        .vendor-workspace .vendor-product-row {
+          padding: 13px;
+          border-color: #e5eee8;
+          border-radius: 11px;
+          background: #fcfefc;
+          transition: border-color .18s ease, box-shadow .18s ease;
+        }
+
+        .vendor-workspace .vendor-product-row:hover {
+          border-color: #c6e3d3;
+          box-shadow: 0 5px 14px rgba(35, 83, 64, .06);
+        }
+
+        .vendor-workspace .vendor-product-thumbnail {
+          width: 54px;
+          height: 54px;
+          border-radius: 10px;
+          background: #edf5f0;
+        }
+
+        .vendor-workspace .vendor-product-row-actions button {
+          min-height: 33px;
+          border-color: #cfe5d7;
+          border-radius: 8px;
+          background: #f0f8f2;
+          color: #26734f;
+          transition: background .18s ease, border-color .18s ease;
+        }
+
+        .vendor-workspace .vendor-product-row-actions button:hover:not(:disabled) {
+          border-color: #a9d2b8;
+          background: #e3f3e8;
+        }
+
+        .vendor-workspace .vendor-order-card {
+          border-color: #e1ece5;
+          border-left-color: #50a77b;
+          border-radius: 14px;
+          box-shadow: 0 4px 15px rgba(35, 83, 64, .05);
+        }
+
+        .vendor-workspace .vendor-order-card:hover {
+          border-color: #bfdfcd;
+          box-shadow: 0 10px 24px rgba(35, 83, 64, .1);
+        }
+
+        .vendor-workspace .vendor-order-status {
+          border-color: #d5ecdf;
+          background: #edf8f1;
+          color: #26734f;
+        }
+
+        .vendor-workspace .vendor-order-status.is-cancelled {
+          border-color: #f2d3d0;
+          background: #fff0ef;
+          color: #a23d36;
+        }
+
+        .vendor-workspace .workspace-account-panel {
+          background: linear-gradient(145deg, #fff, #fbfefc);
+        }
+
+        .vendor-workspace .workspace-account-row {
+          border-top-color: #edf2ee;
+        }
+
+        .vendor-workspace .workspace-account-lock {
+          background: #eaf6ee;
+          color: #28714d;
+        }
+
+        .vendor-workspace .workspace-security-state {
+          color: #28714d;
+        }
+
+        .vendor-workspace .workspace-text-link {
+          color: #287b55;
+        }
+
+        .vendor-workspace .workspace-footer {
+          color: #84958d;
+        }
+
+        .vendor-workspace :is(a, button, input, textarea):focus-visible {
+          outline: 3px solid rgba(53, 153, 103, .45);
+          outline-offset: 3px;
+        }
+
+        @media (max-width: 760px) {
+          .vendor-workspace .workspace-sidebar {
+            border-bottom-color: rgba(255, 255, 255, .12);
+          }
+
+          .vendor-workspace .workspace-nav {
+            overflow-x: auto;
+            padding: 2px 0 3px;
+            scrollbar-width: thin;
+          }
+
+          .vendor-workspace .workspace-nav-link {
+            flex: 0 0 auto;
+          }
+
+          .vendor-workspace .workspace-nav-link.is-active::before {
+            display: none;
+          }
+
+          .vendor-workspace .workspace-welcome {
+            min-height: 170px;
+            padding: 24px;
+            border-radius: 18px;
+          }
+        }
+
+        @media (max-width: 600px) {
+          .vendor-workspace .workspace-content {
+            padding-top: 22px;
+          }
+
+          .vendor-workspace .workspace-welcome {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 16px;
+          }
+
+          .vendor-workspace .workspace-welcome::after {
+            right: -120px;
+          }
+
+          .vendor-workspace .workspace-info-card {
+            min-height: 145px;
+          }
+
+          .vendor-workspace .workspace-panel-heading {
+            gap: 12px;
+            padding: 19px 17px 15px;
+          }
+
+          .vendor-workspace .vendor-priority-list {
+            padding-right: 16px;
+            padding-left: 16px;
+          }
+
+          .vendor-workspace .vendor-priority-item {
+            grid-template-columns: auto minmax(0, 1fr);
+          }
+
+          .vendor-workspace .vendor-priority-value {
+            grid-column: 2;
+          }
+
+          .vendor-workspace .vendor-product-form {
+            margin-right: 16px;
+            margin-left: 16px;
+            padding: 13px;
+          }
+
+          .vendor-workspace .vendor-product-form-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .vendor-workspace .vendor-product-description {
+            grid-column: auto;
+          }
+
+          .vendor-workspace .vendor-product-list,
+          .vendor-workspace .vendor-order-list {
+            padding-right: 16px;
+            padding-left: 16px;
+          }
+
+          .vendor-workspace .vendor-product-row {
+            flex-wrap: wrap;
+          }
+
+          .vendor-workspace .vendor-product-row-actions {
+            width: 100%;
+            justify-content: space-between;
+            padding-left: 66px;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .vendor-workspace *,
+          .vendor-workspace *::before,
+          .vendor-workspace *::after {
+            scroll-behavior: auto !important;
+            transition-duration: .01ms !important;
+            animation-duration: .01ms !important;
+          }
+        }
+      `}</style>
       <aside className="workspace-sidebar">
         <Link className="workspace-brand" to="/vendor/dashboard">
           <span className="workspace-brand-mark"><img src="/brand-logo.png" alt="" /></span>

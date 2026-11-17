@@ -298,7 +298,8 @@ router.get('/admin/payments', protect, authorize('admin'), async (req, res) => {
                     as: 'vendor'
                 }
             },
-            { $unwind: { path: '$vendor', preserveNullAndEmptyArrays: true } },
+            { $unwind: '$vendor' },
+            { $match: { 'vendor.role': 'vendor' } },
             {
                 $project: {
                     vendorId: '$_id.vendor',
@@ -319,14 +320,14 @@ router.get('/admin/payments', protect, authorize('admin'), async (req, res) => {
             .sort({ createdAt: -1 })
             .limit(100)
             .populate('customer', 'name email')
-            .populate('items.vendor', 'name email vendorProfile.storeName')
+            .populate('items.vendor', 'name email role vendorProfile.storeName')
             .lean();
 
         const recentPayments = payments.map((payment) => {
             const vendorBreakdown = new Map();
             for (const item of payment.items || []) {
-                const vendorId = item.vendor?._id?.toString() || item.vendor?.toString();
-                if (!vendorId) continue;
+                if (!item.vendor || item.vendor.role !== 'vendor') continue;
+                const vendorId = item.vendor._id.toString();
                 const storeName = item.storeName || 'Store';
                 const storeKey = `${vendorId}:${storeName}`;
 

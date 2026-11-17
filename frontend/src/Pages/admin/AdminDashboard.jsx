@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import './AdminDashboard.css';
-import MarketplaceChatbot from '../MarketplaceChatbot';
+import MarketplaceChatbot from '../../components/MarketplaceChatbot';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
@@ -20,6 +20,13 @@ function getInitials(name, email) {
     .slice(0, 2)
     .map((part) => part[0].toUpperCase())
     .join('');
+}
+
+function getTimeBasedGreeting(date = new Date()) {
+  const hour = date.getHours();
+  if (hour < 12) return 'Good Morning';
+  if (hour < 17) return 'Good Afternoon';
+  return 'Good Evening';
 }
 
 export default function AdminDashboard() {
@@ -45,7 +52,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState('');
   const [reviewingVendorId, setReviewingVendorId] = useState('');
   const [reviewError, setReviewError] = useState('');
-  const [approvingVendorId, setApprovingVendorId] = useState('');
+  const [vendorApplicationReviewingId, setVendorApplicationReviewingId] = useState('');
   const [vendorApprovalError, setVendorApprovalError] = useState('');
   const navigate = useNavigate();
   const adminProfilePictureUrl = adminProfilePicture
@@ -248,14 +255,14 @@ export default function AdminDashboard() {
     }
   };
 
-  const approveVendorAccount = async (vendorId) => {
-    setApprovingVendorId(vendorId);
+  const reviewVendorApplication = async (vendorId, decision) => {
+    setVendorApplicationReviewingId(vendorId);
     setVendorApprovalError('');
     try {
       const token = localStorage.getItem('jwt_token');
       const response = await axios.put(
         `${BACKEND_URL}/api/auth/admin/vendors/${vendorId}/approval`,
-        {},
+        { decision },
         {
           headers: {
             Authorization: token ? 'Bearer ' + token : '',
@@ -276,10 +283,10 @@ export default function AdminDashboard() {
       )));
     } catch (requestError) {
       setVendorApprovalError(
-        requestError.response?.data?.message || 'Unable to approve the vendor account. Please try again.'
+        requestError.response?.data?.message || 'Unable to review the vendor application. Please try again.'
       );
     } finally {
-      setApprovingVendorId('');
+      setVendorApplicationReviewingId('');
     }
   };
 
@@ -393,7 +400,7 @@ export default function AdminDashboard() {
           <section className="admin-welcome" id="overview">
             <div>
               <div className="admin-eyebrow">MANAGEMENT OVERVIEW</div>
-              <h1>Good to see you, {adminName}</h1>
+              <h1>{getTimeBasedGreeting()}, {adminName.split(/\s+/)[0]}</h1>
               <p>Monitor your marketplace and manage the people who make it thrive.</p>
             </div>
             <button
@@ -467,7 +474,7 @@ export default function AdminDashboard() {
               <div>
                 <div className="admin-eyebrow">SELLER ACCESS</div>
                 <h2 id="vendor-approvals-title">Vendor application approvals</h2>
-                <p>Approving an application changes the applicant’s role to vendor.</p>
+                <p>Approved applicants become vendors; rejected applicants remain customers.</p>
               </div>
               <span className={`admin-approval-count${pendingVendorApprovals.length ? ' has-pending' : ''}`} role="status">
                 {pendingVendorApprovals.length} pending
@@ -508,10 +515,18 @@ export default function AdminDashboard() {
                       <button
                         type="button"
                         className="admin-approval-button is-approve"
-                        onClick={() => approveVendorAccount(vendor._id)}
-                        disabled={Boolean(approvingVendorId)}
+                        onClick={() => reviewVendorApplication(vendor._id, 'approve')}
+                        disabled={Boolean(vendorApplicationReviewingId)}
                       >
-                        {approvingVendorId === vendor._id ? 'Approving…' : 'Approve application'}
+                        {vendorApplicationReviewingId === vendor._id ? 'Reviewing…' : 'Approve application'}
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-approval-button is-reject"
+                        onClick={() => reviewVendorApplication(vendor._id, 'reject')}
+                        disabled={Boolean(vendorApplicationReviewingId)}
+                      >
+                        {vendorApplicationReviewingId === vendor._id ? 'Reviewing…' : 'Reject application'}
                       </button>
                     </div>
                   </article>
@@ -653,7 +668,7 @@ export default function AdminDashboard() {
           </footer>
         </div>
       </main>
-      <MarketplaceChatbot audience="admin" />
+      <MarketplaceChatbot />
     </div>
   );
 }

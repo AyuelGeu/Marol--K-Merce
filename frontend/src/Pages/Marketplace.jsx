@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import './Marketplace.css';
-import MarketplaceChatbot from './MarketplaceChatbot';
 import Login from '../Auth/Login';
 import Register from '../Auth/Register';
 import VendorApplication from './VendorApplication';
+import MarketplaceChatbot from '../components/MarketplaceChatbot';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const CART_STORAGE_KEY = 'marketplace_cart';
@@ -249,7 +249,7 @@ export default function Marketplace() {
           <img src="/brand-logo.png" alt="K-Merce" />
         </Link>
         <nav aria-label="Marketplace navigation">
-          {isCustomer && <Link to="/customer/dashboard#orders">My orders</Link>}
+          <Link to="/login">My orders</Link>
           {user.role === 'vendor' && <Link to="/vendor/dashboard#products">Seller workspace</Link>}
           {!isLoggedIn && (
             <div className="marketplace-auth-actions">
@@ -439,12 +439,12 @@ export default function Marketplace() {
           )}
         </aside>}
       </div>
-      {isLoggedIn && <MarketplaceChatbot />}
       {isLoginOpen && <Login isModal onClose={() => setIsLoginOpen(false)} />}
       {isRegisterOpen && <Register isModal onClose={() => setIsRegisterOpen(false)} />}
       {isVendorApplicationOpen && (
         <VendorApplication isModal onClose={() => setIsVendorApplicationOpen(false)} />
       )}
+      <MarketplaceChatbot />
     </main>
   );
 }

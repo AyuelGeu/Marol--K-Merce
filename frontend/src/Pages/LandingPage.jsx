@@ -1,19 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 import Login from '../Auth/Login';
 import Register from '../Auth/Register';
 
-// --- MOCK PRODUCTS DATA ---
-const PRODUCTS = [
-  { id: 1, name: 'Wireless Noise-Canceling Headphones', price: 199.99, originalPrice: 249.99, rating: 4.8, reviews: 124, category: 'Electronics', tag: 'Hot', imageColor: '#1E293B' },
-  { id: 2, name: 'Minimalist Mechanical Keyboard', price: 89.99, originalPrice: 119.99, rating: 4.9, reviews: 88, category: 'Electronics', tag: 'Sale', imageColor: '#334155' },
-  { id: 3, name: 'Ergonomic Leather Desk Chair', price: 299.00, originalPrice: 349.00, rating: 4.7, reviews: 56, category: 'Furniture', tag: 'Top Rated', imageColor: '#475569' },
-  { id: 4, name: 'Smart Fitness & Health Watch', price: 149.50, originalPrice: 179.99, rating: 4.6, reviews: 210, category: 'Tech', tag: 'New', imageColor: '#0F172A' },
-];
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 const BANNERS = [
-  { title: "Next-Gen Tech Essentials", subtitle: "Upgrade your workspace with premium performance gear.", badge: "New Arrival 2026", bg: "linear-gradient(135deg, #312E81 0%, #1E1B4B 100%)" },
-  { title: "Mid-Season Flash Sale", subtitle: "Save up to 40% on selected audio and productivity devices.", badge: "Limited Time", bg: "linear-gradient(135deg, #065F46 0%, #064E3B 100%)" },
+  { title: "One marketplace. Many independent stores! 👌", subtitle: "Discover products from approved K-Merce vendors and shop from the stores behind them.", badge: "Welcome to K-Merce", bg: "linear-gradient(135deg, #312E81 0%, #1E1B4B 100%)" },
+  { title: "Shop, sell, and manage in one place!", subtitle: "A connected marketplace with customer accounts, vendor workspaces, and tools for administrators.", badge: "Made for local commerce", bg: "linear-gradient(135deg, #065F46 0%, #064E3B 100%)" },
 ];
 
 export default function LandingPage() {
@@ -25,18 +20,47 @@ export default function LandingPage() {
   const [subscribed, setSubscribed] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [areFaqsVisible, setAreFaqsVisible] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [productsError, setProductsError] = useState('');
   
-  // Real-time Countdown Timer State
-  const [timeLeft, setTimeLeft] = useState({ hours: 12, minutes: 45, seconds: 30 });
-
-  // Chat Widget States
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState([
-    { sender: 'support', text: 'Hi there! How can we help you today?' }
-  ]);
-  const [chatInput, setChatInput] = useState('');
   const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
   const cartTotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+
+  const toggleFaqs = (event) => {
+    event.preventDefault();
+    const shouldShowFaqs = !areFaqsVisible;
+    setAreFaqsVisible(shouldShowFaqs);
+
+    if (shouldShowFaqs) {
+      window.requestAnimationFrame(() => {
+        document.getElementById('landing-faqs')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  };
+
+  useEffect(() => {
+    let isCurrent = true;
+    axios.get(`${BACKEND_URL}/api/marketplace/products`, {
+      headers: { 'ngrok-skip-browser-warning': 'true' }
+    })
+      .then((response) => {
+        if (isCurrent) setProducts(response.data);
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          setProductsError(error.response?.data?.message || 'Unable to load marketplace products. Please try again.');
+        }
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoadingProducts(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   // Carousel Auto-slide Effect
   useEffect(() => {
@@ -76,40 +100,10 @@ export default function LandingPage() {
       .filter((item) => item.quantity > 0));
   };
 
-  // Flash Sale Ticking Timer
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
-        if (prev.minutes > 0) return { ...prev, minutes: 59, seconds: 59 };
-        if (prev.hours > 0) return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        return prev;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   const toggleWishlist = (id) => {
     setWishlist((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
-  };
-
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-
-    // Add user message
-    setChatMessages((prev) => [...prev, { sender: 'user', text: chatInput }]);
-    setChatInput('');
-
-    // Simulate auto-reply
-    setTimeout(() => {
-      setChatMessages((prev) => [
-        ...prev, 
-        { sender: 'support', text: "Thanks for reaching out! A representative will connect with you shortly." }
-      ]);
-    }, 1200);
   };
 
   // --- FLASHY ANIMATION STYLES (WITH FULL SCREEN RESET) ---
@@ -127,17 +121,844 @@ export default function LandingPage() {
       min-height: 100vh;
     }
 
-    @keyframes moveGradient {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
     .flashy-background {
-      background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab, #9b59b6, #3498db);
-      background-size: 400% 400%;
-      animation: moveGradient 12s ease infinite;
+      background: #f6f7f2 !important;
       width: 100%;
       min-height: 100vh;
+    }
+    .flashy-background,
+    .flashy-background * {
+      box-sizing: border-box;
+      font-family: Inter, "Aptos", "Segoe UI", ui-sans-serif, system-ui, sans-serif !important;
+    }
+    .flashy-background {
+      --landing-ink: #1d3129;
+      --landing-muted: #68786f;
+      --landing-green: #176b4d;
+      --landing-green-dark: #103f31;
+      --landing-line: #e5e9e2;
+      color: var(--landing-ink) !important;
+      letter-spacing: 0 !important;
+      line-height: 1.5;
+      text-align: left !important;
+    }
+    .flashy-background button,
+    .flashy-background a,
+    .flashy-background input,
+    .flashy-background select {
+      -webkit-tap-highlight-color: transparent;
+    }
+    .flashy-background button,
+    .flashy-background a {
+      transition: color .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease !important;
+    }
+    .flashy-background :is(button, a, input, select):focus-visible {
+      outline: 3px solid rgba(42, 139, 94, .42) !important;
+      outline-offset: 3px;
+    }
+    .flashy-background > div:first-child {
+      padding: 8px 18px !important;
+      background: #103f31 !important;
+      color: #e8f4ec !important;
+      font-size: 11px !important;
+      font-weight: 600;
+      letter-spacing: .035em !important;
+      text-align: center;
+    }
+    .flashy-background > header {
+      position: sticky !important;
+      top: 0;
+      z-index: 100;
+      min-height: 82px;
+      padding: 12px clamp(20px, 5vw, 76px) !important;
+      border-bottom: 1px solid rgba(226, 233, 227, .9) !important;
+      background: rgba(255, 255, 255, .94) !important;
+      box-shadow: 0 7px 22px rgba(27, 55, 39, .045);
+      backdrop-filter: blur(16px);
+    }
+    .flashy-background > header > div:first-child {
+      flex: 0 0 auto;
+      gap: 10px !important;
+    }
+    .flashy-background > header > div:first-child img {
+      width: 48px !important;
+      height: 48px !important;
+    }
+    .flashy-background > header > div:first-child span {
+      color: #183c2d !important;
+      font-size: 22px !important;
+      font-weight: 800 !important;
+      letter-spacing: -.055em !important;
+    }
+    .flashy-background > header > div:nth-child(2) {
+      max-width: 520px !important;
+      min-height: 44px;
+      border: 1px solid #dfe8e1 !important;
+      border-radius: 12px !important;
+      background: #f8faf8;
+      box-shadow: inset 0 1px 2px rgba(18, 60, 42, .025);
+    }
+    .flashy-background > header > div:nth-child(2):focus-within {
+      border-color: #82b99a !important;
+      box-shadow: 0 0 0 4px rgba(42, 139, 94, .1);
+    }
+    .flashy-background > header > div:nth-child(2) select {
+      padding: 0 12px !important;
+      background: #f0f5f1 !important;
+      color: #496458 !important;
+      font-size: 11px !important;
+    }
+    .flashy-background > header > div:nth-child(2) input {
+      min-width: 0;
+      padding: 10px 14px !important;
+      background: transparent;
+      color: #203d30 !important;
+      font-size: 12px !important;
+    }
+    .flashy-background > header > div:nth-child(2) input::placeholder {
+      color: #92a198;
+    }
+    .flashy-background > header > div:nth-child(2) button {
+      min-width: 48px;
+      background: #176b4d !important;
+      font-size: 14px;
+    }
+    .flashy-background > header > div:nth-child(2) button:hover {
+      background: #10553c !important;
+    }
+    .flashy-background > header > div:nth-child(3) {
+      gap: 11px !important;
+    }
+    .flashy-background > header > div:nth-child(3) > a,
+    .flashy-background > header > div:nth-child(3) > button {
+      min-height: 39px;
+      padding: 0 14px !important;
+      border-radius: 10px !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      text-decoration: none !important;
+    }
+    .flashy-background > header > div:nth-child(3) > a,
+    .flashy-background > header > div:nth-child(3) > button:last-child {
+      background: #176b4d !important;
+      box-shadow: 0 5px 12px rgba(23, 107, 77, .14);
+    }
+    .flashy-background > header > div:nth-child(3) > a:hover,
+    .flashy-background > header > div:nth-child(3) > button:last-child:hover {
+      transform: translateY(-1px);
+      background: #10553c !important;
+      box-shadow: 0 8px 17px rgba(23, 107, 77, .2);
+    }
+    .flashy-background > header > div:nth-child(3) > button:nth-last-child(2) {
+      border: 1px solid #dce5df !important;
+      background: #fff !important;
+      color: #41594d !important;
+    }
+    .flashy-background > header > div:nth-child(3) > button:nth-last-child(2):hover {
+      border-color: #bdd7c7 !important;
+      background: #f4faf6 !important;
+    }
+    .flashy-background > header > div:nth-child(3) > div[title="Wishlist"] {
+      display: none;
+    }
+    .flashy-background .landing-cart-trigger {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: #f2f7f3;
+    }
+    .flashy-background .landing-cart-trigger:hover {
+      background: #e5f1e9;
+    }
+    .flashy-background .landing-cart-trigger > span:first-child {
+      font-size: 17px !important;
+    }
+    .flashy-background > header > div:nth-child(3) .authDivider {
+      background: #e1e8e2 !important;
+    }
+    .flashy-background > nav {
+      justify-content: center;
+      gap: clamp(18px, 3vw, 38px) !important;
+      padding: 11px 20px !important;
+      border-bottom: 1px solid #e8ece7 !important;
+      background: #fff !important;
+      scrollbar-width: thin;
+    }
+    .flashy-background > nav a {
+      position: relative;
+      color: #64746b !important;
+      font-size: 11px !important;
+      font-weight: 650 !important;
+      text-decoration: none;
+    }
+    .flashy-background > nav a:hover {
+      color: #176b4d !important;
+    }
+    .flashy-background > section:nth-of-type(1) {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      min-height: 410px !important;
+      margin: 30px clamp(16px, 4vw, 60px) 0;
+      padding: clamp(44px, 7vw, 86px) clamp(28px, 7vw, 96px) !important;
+      border: 1px solid rgba(255, 255, 255, .12);
+      border-radius: 26px;
+      background: linear-gradient(115deg, #103d30 0%, #145c43 57%, #237958 100%) !important;
+      box-shadow: 0 22px 50px rgba(18, 67, 47, .2);
+      text-align: left;
+    }
+    .flashy-background > section:nth-of-type(1)::before,
+    .flashy-background > section:nth-of-type(1)::after {
+      position: absolute;
+      z-index: -1;
+      border: 1px solid rgba(225, 251, 233, .15);
+      border-radius: 50%;
+      content: "";
+      pointer-events: none;
+    }
+    .flashy-background > section:nth-of-type(1)::before {
+      top: -245px;
+      right: -85px;
+      width: 560px;
+      height: 560px;
+      box-shadow: 0 0 0 44px rgba(225, 251, 233, .035), 0 0 0 90px rgba(225, 251, 233, .025);
+    }
+    .flashy-background > section:nth-of-type(1)::after {
+      right: 15%;
+      bottom: -240px;
+      width: 390px;
+      height: 390px;
+      background: radial-gradient(circle, rgba(147, 211, 166, .16), transparent 70%);
+    }
+    .flashy-background > section:nth-of-type(1) > div:first-child {
+      position: relative;
+      z-index: 1;
+      max-width: 650px !important;
+    }
+    .flashy-background > section:nth-of-type(1) > div:first-child > span {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 12px !important;
+      border: 1px solid rgba(224, 250, 234, .22);
+      border-radius: 99px !important;
+      background: rgba(255, 255, 255, .1) !important;
+      color: #d3f0dc !important;
+      font-size: 10px !important;
+      font-weight: 700 !important;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .flashy-background > section:nth-of-type(1) h1 {
+      max-width: 650px;
+      margin: 22px 0 15px !important;
+      color: #fff !important;
+      font-size: clamp(38px, 6vw, 66px) !important;
+      font-weight: 780 !important;
+      letter-spacing: -.065em !important;
+      line-height: 1.03 !important;
+      text-wrap: balance;
+    }
+    .flashy-background > section:nth-of-type(1) p {
+      max-width: 540px;
+      margin: 0 0 28px !important;
+      color: rgba(239, 250, 243, .78) !important;
+      font-size: clamp(14px, 1.6vw, 17px) !important;
+      line-height: 1.7;
+    }
+    .flashy-background > section:nth-of-type(1) > div:first-child > div {
+      flex-wrap: wrap;
+      gap: 11px !important;
+    }
+    .flashy-background > section:nth-of-type(1) > div:first-child > div a,
+    .flashy-background > section:nth-of-type(1) > div:first-child > div button {
+      min-height: 48px;
+      padding: 0 20px !important;
+      border: 1px solid rgba(255, 255, 255, .28) !important;
+      border-radius: 11px !important;
+      font-size: 12px !important;
+      font-weight: 700 !important;
+      text-decoration: none;
+    }
+    .flashy-background > section:nth-of-type(1) > div:first-child > div a {
+      background: #f4c18b !important;
+      color: #2b3c30 !important;
+      box-shadow: 0 7px 18px rgba(10, 37, 26, .17);
+    }
+    .flashy-background > section:nth-of-type(1) > div:first-child > div a:hover {
+      transform: translateY(-2px);
+      background: #ffd2a4 !important;
+    }
+    .flashy-background > section:nth-of-type(1) > div:first-child > div button {
+      background: rgba(255, 255, 255, .08) !important;
+      color: #f5fbf7 !important;
+    }
+    .flashy-background > section:nth-of-type(1) > div:first-child > div button:hover {
+      background: rgba(255, 255, 255, .16) !important;
+    }
+    .flashy-background > section:nth-of-type(1) > div:last-child {
+      z-index: 1;
+      bottom: 25px !important;
+      right: clamp(28px, 7vw, 96px) !important;
+      gap: 9px !important;
+    }
+    .flashy-background > section:nth-of-type(1) > div:last-child span {
+      width: 9px !important;
+      height: 9px !important;
+      border: 1px solid rgba(255, 255, 255, .55);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
+    }
+    .flashy-background > section:nth-of-type(2) {
+      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+      gap: 0 !important;
+      margin: 26px clamp(16px, 4vw, 60px) 0;
+      padding: 19px 10px !important;
+      border: 1px solid #e8ece6 !important;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, .88) !important;
+      box-shadow: 0 8px 22px rgba(34, 57, 41, .045);
+    }
+    .flashy-background > section:nth-of-type(2) > div {
+      min-width: 0;
+      padding: 5px 18px;
+    }
+    .flashy-background > section:nth-of-type(2) > div + div {
+      border-left: 1px solid #e9eee9;
+    }
+    .flashy-background > section:nth-of-type(2) > div > span {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      flex: 0 0 42px;
+      place-items: center;
+      border-radius: 12px;
+      background: #edf6ef;
+      color: #26734f;
+      font-size: 20px !important;
+    }
+    .flashy-background > section:nth-of-type(2) strong {
+      color: #294536;
+      font-size: 11px;
+      font-weight: 750;
+    }
+    .flashy-background > section:nth-of-type(2) p {
+      margin: 3px 0 0 !important;
+      color: #7d8b82 !important;
+      font-size: 10px !important;
+      line-height: 1.45;
+    }
+    .flashy-background > section:nth-of-type(3) {
+      padding: 62px clamp(20px, 5vw, 72px) !important;
+      border-bottom: 1px solid #e8ece6 !important;
+      background: #eff3ed !important;
+    }
+    .flashy-background > section:nth-of-type(3) > div {
+      max-width: 1160px !important;
+      gap: clamp(28px, 6vw, 80px) !important;
+    }
+    .flashy-background > section:nth-of-type(3) > div > div:first-child > span {
+      color: #347b58 !important;
+      font-size: 10px !important;
+      font-weight: 800 !important;
+      letter-spacing: .16em;
+    }
+    .flashy-background > section:nth-of-type(3) h2 {
+      margin: 12px 0 !important;
+      color: #1d392b !important;
+      font-size: clamp(27px, 3.2vw, 38px) !important;
+      font-weight: 760 !important;
+      letter-spacing: -.05em !important;
+      line-height: 1.12;
+      text-wrap: balance;
+    }
+    .flashy-background > section:nth-of-type(3) > div > div:first-child > p {
+      max-width: 470px !important;
+      color: #68796e !important;
+      font-size: 13px !important;
+      line-height: 1.7;
+    }
+    .flashy-background > section:nth-of-type(3) > div > div:first-child > a {
+      min-height: 45px;
+      margin-top: 21px;
+      padding: 0 17px !important;
+      border-radius: 10px !important;
+      background: #176b4d !important;
+      box-shadow: 0 7px 16px rgba(23, 107, 77, .15);
+      font-size: 11px !important;
+      text-decoration: none;
+    }
+    .flashy-background > section:nth-of-type(3) > div > div:first-child > a:hover {
+      transform: translateY(-2px);
+      background: #10553c !important;
+    }
+    .flashy-background > section:nth-of-type(3) > div > div:last-child {
+      padding: 25px !important;
+      border: 1px solid #e2eae2 !important;
+      border-radius: 16px !important;
+      background: #fff !important;
+      box-shadow: 0 14px 34px rgba(39, 68, 46, .07) !important;
+    }
+    .flashy-background > section:nth-of-type(3) > div > div:last-child strong {
+      color: #294536;
+      font-size: 14px;
+    }
+    .flashy-background > section:nth-of-type(3) > div > div:last-child p {
+      margin-top: 8px !important;
+      color: #77877c !important;
+      font-size: 11px !important;
+      line-height: 1.65;
+    }
+    .flashy-background > main {
+      width: 100% !important;
+      max-width: 1360px !important;
+      padding: 64px clamp(20px, 5vw, 72px) 72px !important;
+    }
+    .flashy-background > main > div:first-child {
+      margin-bottom: 25px !important;
+    }
+    .flashy-background > main > div:first-child > div {
+      padding: 0 !important;
+      background: transparent !important;
+      backdrop-filter: none !important;
+    }
+    .flashy-background > main h2 {
+      color: #1d392b !important;
+      font-size: clamp(26px, 3vw, 34px) !important;
+      font-weight: 760 !important;
+      letter-spacing: -.05em !important;
+    }
+    .flashy-background > main > div:first-child p {
+      margin-top: 6px !important;
+      color: #77877c !important;
+      font-size: 12px !important;
+      font-weight: 450 !important;
+    }
+    .flashy-background > main > div:nth-child(2) {
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 238px), 1fr)) !important;
+      align-items: stretch;
+      gap: 19px !important;
+    }
+    .flashy-background > main > div:nth-child(2) > p {
+      grid-column: 1 / -1;
+      margin: 0;
+      padding: 30px 22px;
+      border: 1px solid #e6ebe5;
+      border-radius: 14px;
+      background: #fff;
+      color: #718177;
+      font-size: 12px;
+      text-align: center;
+    }
+    .flashy-background > main > div:nth-child(2) > div {
+      min-width: 0;
+      border: 1px solid #e7ebe5 !important;
+      border-radius: 16px !important;
+      background: #fff !important;
+      box-shadow: 0 7px 20px rgba(34, 57, 41, .055) !important;
+      transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease !important;
+    }
+    .flashy-background > main > div:nth-child(2) > div:hover {
+      transform: translateY(-5px);
+      border-color: #c9decf !important;
+      box-shadow: 0 17px 30px rgba(34, 57, 41, .11) !important;
+    }
+    .flashy-background > main > div:nth-child(2) > div > div:first-child {
+      height: auto !important;
+      aspect-ratio: 1.25;
+      overflow: hidden;
+      background: #f1f5f1 !important;
+    }
+    .flashy-background > main > div:nth-child(2) > div > div:first-child > img {
+      transition: transform .35s ease;
+    }
+    .flashy-background > main > div:nth-child(2) > div:hover > div:first-child > img {
+      transform: scale(1.045);
+    }
+    .flashy-background > main > div:nth-child(2) > div > div:first-child > button {
+      width: 38px !important;
+      height: 38px !important;
+      border: 1px solid rgba(32, 58, 42, .08) !important;
+      background: rgba(255, 255, 255, .95) !important;
+      box-shadow: 0 4px 12px rgba(26, 48, 34, .12) !important;
+      font-size: 15px;
+    }
+    .flashy-background > main > div:nth-child(2) > div > div:first-child > button:hover {
+      transform: scale(1.08);
+    }
+    .flashy-background > main > div:nth-child(2) > div > div:last-child {
+      min-height: 146px;
+      padding: 16px !important;
+    }
+    .flashy-background > main > div:nth-child(2) > div > div:last-child > span {
+      color: #62806d !important;
+      font-size: 9px !important;
+      font-weight: 750 !important;
+      letter-spacing: .09em;
+    }
+    .flashy-background > main > div:nth-child(2) > div > div:last-child > h3 {
+      display: -webkit-box;
+      overflow: hidden;
+      min-height: 42px;
+      margin: 6px 0 12px !important;
+      color: #263d30 !important;
+      font-size: 14px !important;
+      font-weight: 700 !important;
+      letter-spacing: -.02em;
+      line-height: 1.45 !important;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+    .flashy-background > main > div:nth-child(2) > div > div:last-child > div {
+      gap: 10px;
+      padding-top: 11px;
+      border-top: 1px solid #edf0ec;
+    }
+    .flashy-background > main > div:nth-child(2) > div > div:last-child > div > div > span {
+      color: #176b4d !important;
+      font-size: 14px !important;
+      font-weight: 800 !important;
+      letter-spacing: -.025em;
+    }
+    .flashy-background > main > div:nth-child(2) > div > div:last-child > div > button {
+      min-height: 34px;
+      padding: 0 12px !important;
+      border: 1px solid #d5e8da !important;
+      border-radius: 8px !important;
+      background: #eff7f0 !important;
+      color: #206847 !important;
+      font-size: 10px !important;
+      font-weight: 750 !important;
+    }
+    .flashy-background > main > div:nth-child(2) > div > div:last-child > div > button:hover {
+      border-color: #b6d6c0 !important;
+      background: #e2f1e5 !important;
+    }
+    .flashy-background > section:nth-of-type(4) {
+      padding: 54px 22px !important;
+      background:
+        radial-gradient(circle at 85% 20%, rgba(119, 183, 142, .16), transparent 22rem),
+        #123f31 !important;
+      color: #f4fbf5 !important;
+      text-align: center;
+    }
+    .flashy-background > section:nth-of-type(4) h2 {
+      margin: 0 !important;
+      color: #fff !important;
+      font-size: clamp(25px, 3vw, 32px) !important;
+      font-weight: 760 !important;
+      letter-spacing: -.045em !important;
+    }
+    .flashy-background > section:nth-of-type(4) p {
+      margin-top: 9px !important;
+      color: #c0d8c8 !important;
+      font-size: 12px !important;
+    }
+    .flashy-background > section:nth-of-type(4) form {
+      gap: 9px !important;
+    }
+    .flashy-background > section:nth-of-type(4) input {
+      min-width: 0;
+      min-height: 45px;
+      padding: 0 14px !important;
+      border: 1px solid rgba(255, 255, 255, .16) !important;
+      border-radius: 10px !important;
+      background: rgba(255, 255, 255, .96);
+      font-size: 11px;
+    }
+    .flashy-background > section:nth-of-type(4) form button {
+      min-height: 45px;
+      border-radius: 10px !important;
+      background: #f2c18f !important;
+      color: #233d2e !important;
+      font-size: 11px !important;
+      font-weight: 750 !important;
+    }
+    .flashy-background > section:nth-of-type(4) form button:hover {
+      background: #ffd3a7 !important;
+    }
+    .flashy-background > section:nth-of-type(4) > div > div {
+      color: #bce7c9 !important;
+      font-size: 12px !important;
+    }
+    .flashy-background > footer {
+      padding: 48px clamp(20px, 5vw, 72px) 20px !important;
+      background: #0e2e25 !important;
+      color: #bdcec3 !important;
+    }
+    .flashy-background > footer > div:first-child {
+      max-width: 1360px;
+      margin: 0 auto 34px !important;
+      gap: 32px !important;
+    }
+    .flashy-background > footer > div:first-child > div:first-child > div span {
+      color: #fff !important;
+      font-size: 20px !important;
+      letter-spacing: -.04em !important;
+    }
+    .flashy-background > footer h4 {
+      margin: 0 0 14px !important;
+      color: #f3f8f4 !important;
+      font-size: 12px !important;
+      font-weight: 750 !important;
+    }
+    .flashy-background > footer p,
+    .flashy-background > footer li a,
+    .flashy-background > footer li button {
+      color: #b5c8bc !important;
+      font-size: 11px !important;
+      line-height: 1.7;
+    }
+    .flashy-background > footer li a:hover,
+    .flashy-background > footer li button:hover {
+      color: #e7c495 !important;
+    }
+    .flashy-background > footer > div:last-child {
+      max-width: 1360px;
+      margin: 0 auto;
+      border-top-color: rgba(255, 255, 255, .12) !important;
+      color: #94aca0 !important;
+      font-size: 10px !important;
+      text-align: center;
+    }
+    .landing-cart-backdrop {
+      background: rgba(14, 35, 27, .52) !important;
+      backdrop-filter: blur(5px);
+    }
+    .landing-cart-drawer {
+      border-left: 1px solid #e5ece6;
+      background: #fff !important;
+      color: #203a2e !important;
+    }
+    .landing-cart-header {
+      border-bottom-color: #e7eee8 !important;
+    }
+    .landing-cart-header h2 {
+      color: #203a2e !important;
+      font-size: 20px !important;
+      font-weight: 750 !important;
+      letter-spacing: -.04em;
+    }
+    .landing-cart-header span,
+    .landing-cart-item-info > span,
+    .landing-cart-empty p,
+    .landing-cart-footer p {
+      color: #77877c !important;
+    }
+    .landing-cart-close {
+      border: 1px solid #e4ebe5 !important;
+      background: #f5f8f5 !important;
+    }
+    .landing-cart-empty > strong,
+    .landing-cart-item-info > strong,
+    .landing-cart-item-total {
+      color: #263e31 !important;
+    }
+    .landing-cart-empty button,
+    .landing-cart-footer button {
+      border-radius: 9px !important;
+      background: #176b4d !important;
+    }
+    .landing-cart-empty button:hover,
+    .landing-cart-footer button:hover {
+      background: #10553c !important;
+    }
+    .landing-cart-item {
+      border-bottom-color: #edf1ed !important;
+    }
+    .landing-cart-quantity {
+      overflow: hidden;
+      border-color: #e1e9e2 !important;
+    }
+    .landing-cart-quantity button {
+      background: #f4f8f4 !important;
+      color: #286448 !important;
+    }
+    .landing-cart-quantity button:hover {
+      background: #e5f1e7 !important;
+    }
+    .landing-cart-footer {
+      border-top-color: #e7eee8 !important;
+      background: #fbfdfb !important;
+    }
+    @media (max-width: 1050px) {
+      .flashy-background > header {
+        flex-wrap: wrap;
+        gap: 12px !important;
+      }
+      .flashy-background > header > div:nth-child(2) {
+        order: 3;
+        max-width: none !important;
+        flex: 1 0 100% !important;
+      }
+      .flashy-background > section:nth-of-type(2) {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      }
+      .flashy-background > section:nth-of-type(2) > div:nth-child(3) {
+        border-left: 0;
+      }
+      .flashy-background > section:nth-of-type(2) > div:nth-child(n + 3) {
+        border-top: 1px solid #e9eee9;
+        padding-top: 14px;
+      }
+    }
+    @media (max-width: 680px) {
+      .flashy-background > header {
+        padding: 10px 16px !important;
+      }
+      .flashy-background > header > div:first-child img {
+        width: 40px !important;
+        height: 40px !important;
+      }
+      .flashy-background > header > div:first-child span {
+        font-size: 19px !important;
+      }
+      .flashy-background > header > div:nth-child(3) {
+        gap: 7px !important;
+      }
+      .flashy-background > header > div:nth-child(3) > a {
+        display: none !important;
+      }
+      .flashy-background > header > div:nth-child(3) > button {
+        min-height: 35px;
+        padding: 0 10px !important;
+      }
+      .flashy-background > header > div:nth-child(2) {
+        min-height: 40px;
+      }
+      .flashy-background > header > div:nth-child(2) select {
+        max-width: 105px;
+        padding: 0 7px !important;
+        font-size: 10px !important;
+      }
+      .flashy-background > nav {
+        justify-content: flex-start;
+        gap: 22px !important;
+        padding: 10px 16px !important;
+      }
+      .flashy-background > nav a {
+        font-size: 10px !important;
+      }
+      .flashy-background > section:nth-of-type(1) {
+        min-height: 390px !important;
+        margin: 16px 12px 0;
+        padding: 42px 25px 58px !important;
+        border-radius: 20px;
+        text-align: center;
+      }
+      .flashy-background > section:nth-of-type(1) h1 {
+        font-size: clamp(36px, 10vw, 52px) !important;
+      }
+      .flashy-background > section:nth-of-type(1) p {
+        font-size: 14px !important;
+      }
+      .flashy-background > section:nth-of-type(1) > div:first-child > div a,
+      .flashy-background > section:nth-of-type(1) > div:first-child > div button {
+        min-height: 43px;
+        padding: 0 13px !important;
+        font-size: 10px !important;
+      }
+      .flashy-background > section:nth-of-type(1) > div:first-child > div {
+        justify-content: center;
+      }
+      .flashy-background > section:nth-of-type(1) > div:last-child {
+        right: 24px !important;
+        bottom: 20px !important;
+      }
+      .flashy-background > section:nth-of-type(2) {
+        margin: 16px 12px 0;
+        padding: 10px 8px !important;
+        border-radius: 13px;
+      }
+      .flashy-background > section:nth-of-type(2) > div {
+        align-items: flex-start;
+        gap: 9px;
+        padding: 11px 8px;
+      }
+      .flashy-background > section:nth-of-type(2) > div > span {
+        width: 34px;
+        height: 34px;
+        flex-basis: 34px;
+        border-radius: 10px;
+        font-size: 16px !important;
+      }
+      .flashy-background > section:nth-of-type(2) strong {
+        font-size: 10px;
+      }
+      .flashy-background > section:nth-of-type(2) p {
+        font-size: 9px !important;
+      }
+      .flashy-background > section:nth-of-type(3) {
+        padding: 42px 21px !important;
+      }
+      .flashy-background > section:nth-of-type(3) > div {
+        gap: 24px !important;
+      }
+      .flashy-background > section:nth-of-type(3) > div > div:last-child {
+        padding: 19px !important;
+      }
+      .flashy-background > main {
+        padding: 45px 16px 50px !important;
+      }
+      .flashy-background > main > div:nth-child(2) {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 11px !important;
+      }
+      .flashy-background > main > div:nth-child(2) > div {
+        border-radius: 12px !important;
+      }
+      .flashy-background > main > div:nth-child(2) > div > div:last-child {
+        min-height: 136px;
+        padding: 11px !important;
+      }
+      .flashy-background > main > div:nth-child(2) > div > div:last-child > h3 {
+        min-height: 40px;
+        font-size: 12px !important;
+      }
+      .flashy-background > main > div:nth-child(2) > div > div:last-child > div > div > span {
+        font-size: 11px !important;
+      }
+      .flashy-background > main > div:nth-child(2) > div > div:last-child > div > button {
+        min-height: 31px;
+        padding: 0 8px !important;
+      }
+      .flashy-background > section:nth-of-type(4) {
+        padding: 42px 18px !important;
+      }
+      .flashy-background > section:nth-of-type(4) form {
+        flex-direction: column;
+      }
+      .flashy-background > section:nth-of-type(4) form button {
+        width: 100%;
+      }
+      .flashy-background > footer {
+        padding: 38px 21px 18px !important;
+      }
+    }
+    @media (max-width: 380px) {
+      .flashy-background > section:nth-of-type(2) {
+        grid-template-columns: 1fr !important;
+      }
+      .flashy-background > section:nth-of-type(2) > div + div {
+        border-top: 1px solid #e9eee9;
+        border-left: 0;
+      }
+      .flashy-background > section:nth-of-type(2) > div {
+        align-items: center;
+      }
+      .flashy-background > main > div:nth-child(2) {
+        grid-template-columns: 1fr !important;
+      }
+      .flashy-background > main > div:nth-child(2) > div > div:first-child {
+        aspect-ratio: 1.45;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .flashy-background *,
+      .flashy-background *::before,
+      .flashy-background *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+      }
     }
     .landing-cart-trigger {
       position: relative;
@@ -331,6 +1152,69 @@ export default function LandingPage() {
       .landing-cart-item { grid-template-columns: 48px minmax(0, 1fr) auto; gap: 9px; }
       .landing-cart-item-image { width: 48px; height: 48px; }
     }
+    .flashy-background .landing-cart-empty {
+      flex: 1;
+      justify-content: center;
+      padding: 36px 28px;
+      background:
+        radial-gradient(ellipse at 50% 42%, rgba(234, 244, 235, .76), transparent 58%),
+        #fff;
+    }
+    .flashy-background .landing-cart-empty > span {
+      display: grid;
+      width: 88px;
+      height: 88px;
+      place-items: center;
+      border: 1px solid #dceade;
+      border-radius: 28px;
+      background: linear-gradient(145deg, #f1f8f1, #e4f1e7);
+      box-shadow: 0 12px 28px rgba(30, 93, 57, .1), inset 0 1px rgba(255, 255, 255, .9);
+      font-size: 38px;
+      animation: landing-cart-float 3s ease-in-out infinite;
+    }
+    .flashy-background .landing-cart-empty > strong {
+      margin-top: 23px;
+      color: #203a2e !important;
+      font-size: 21px;
+      font-weight: 760;
+      letter-spacing: -.045em;
+    }
+    .flashy-background .landing-cart-empty > p {
+      max-width: 250px;
+      margin: 7px 0 22px;
+      color: #78877d !important;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .flashy-background .landing-cart-empty > button {
+      min-height: 44px;
+      padding: 0 20px;
+      border: 1px solid #176b4d;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #21815a, #176b4d) !important;
+      box-shadow: 0 7px 16px rgba(23, 107, 77, .17);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    .flashy-background .landing-cart-empty > button:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, #19724d, #10553c) !important;
+      box-shadow: 0 10px 20px rgba(23, 107, 77, .23);
+    }
+    .flashy-background .landing-cart-empty > button:focus-visible {
+      outline-color: rgba(42, 139, 94, .55);
+    }
+    @keyframes landing-cart-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .flashy-background .landing-cart-empty > span {
+        animation: none;
+      }
+    }
   `;
 
   return (
@@ -342,7 +1226,7 @@ export default function LandingPage() {
         
         {/* 1. TOP ANNOUNCEMENT BAR */}
         <div style={styles.topBar}>
-          🚀 Free Express Shipping on orders over $50 | Use code <strong>KMERCE2026</strong>
+          Shop independent stores, manage your orders, or grow your business with K-Merce.
         </div>
 
         {/* 2. MAIN HEADER */}
@@ -358,10 +1242,17 @@ export default function LandingPage() {
               <option>Electronics</option>
               <option>Fashion</option>
               <option>Home</option>
+              <option>Beauty</option>
+              <option>Sports</option>
+              <option>Books</option>
+              <option>Health</option>
+              <option>Automotive</option>
+              <option>Entertainment</option>
+              <option>Other</option>
             </select>
             <input 
               type="text" 
-              placeholder="Search thousands of products..." 
+              placeholder="Discover products from independent stores..."
               style={styles.searchInput}
             />
             <button style={styles.searchBtn}>🔍</button>
@@ -411,7 +1302,7 @@ export default function LandingPage() {
 
         {/* 3. SUB-NAVIGATION BAR */}
         <nav style={styles.subNav}>
-          {['All Deals', 'Electronics', 'Fashion & Apparel', 'Home & Living', 'Smart Devices', 'Best Sellers', 'Customer Service'].map((item, idx) => (
+          {['Marketplace', 'Customer accounts', 'Vendor applications', 'Seller workspace', 'Orders & payments', 'Admin operations', 'M-Pesa checkout'].map((item, idx) => (
             <a key={idx} href={`#${item}`} style={styles.subNavLink}>{item}</a>
           ))}
         </nav>
@@ -454,83 +1345,37 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* 5. TRUST BADGES */}
-        <section style={styles.trustSection}>
-          <div style={styles.trustItem}>
-            <span style={styles.trustIcon}>🚚</span>
-            <div>
-              <strong>Free Express Shipping</strong>
-              <p style={styles.trustDesc}>On all orders over $50.00</p>
-            </div>
-          </div>
-          <div style={styles.trustItem}>
-            <span style={styles.trustIcon}>🛡️</span>
-            <div>
-              <strong>2-Year Warranty</strong>
-              <p style={styles.trustDesc}>100% Guaranteed protection</p>
-            </div>
-          </div>
-          <div style={styles.trustItem}>
-            <span style={styles.trustIcon}>🎧</span>
-            <div>
-              <strong>24/7 Expert Support</strong>
-              <p style={styles.trustDesc}>Live chat & email response</p>
-            </div>
-          </div>
-          <div style={styles.trustItem}>
-            <span style={styles.trustIcon}>💳</span>
-            <div>
-              <strong>Secure Payments</strong>
-              <p style={styles.trustDesc}>Encrypted checkout portal</p>
-            </div>
-          </div>
-        </section>
-
-        <section id="vendor-application" style={styles.vendorApplication}>
-          <div style={styles.vendorApplicationContent}>
-            <div>
-              <span style={styles.vendorApplicationEyebrow}>SELL ON K-MERCE</span>
-              <h2 style={styles.vendorApplicationTitle}>Bring your store to K-Merce</h2>
-              <p style={styles.vendorApplicationDescription}>
-                Ready to sell with us? Submit your store details for administrator approval.
-              </p>
-              <Link to="/vendor-application" style={styles.vendorApplicationButton}>
-                Apply to be a vendor
-              </Link>
-            </div>
-            <div style={styles.vendorApplicationPreview}>
-              <strong>What happens next?</strong>
-              <p style={styles.vendorApplicationNote}>
-                Create your applicant account, verify your email, and we’ll send your store application to our administrators. Your account becomes a vendor after approval.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* 6. FLASH SALE & PRODUCT CATALOG */}
+        {/* 5. MARKETPLACE OVERVIEW */}
         <main style={styles.mainContent}>
           <div style={styles.sectionHeader}>
             <div style={styles.headerGlassBox}>
-              <h2 style={styles.sectionTitle}>🔥 Flash Deals</h2>
-              <p style={styles.sectionSub}>Limited quantities available at special prices</p>
-            </div>
-
-            <div style={styles.timerBox}>
-              <span style={styles.timerLabel}>Ends In:</span>
-              <span style={styles.timeBlock}>{String(timeLeft.hours).padStart(2, '0')}h</span> :
-              <span style={styles.timeBlock}>{String(timeLeft.minutes).padStart(2, '0')}m</span> :
-              <span style={styles.timeBlock}>{String(timeLeft.seconds).padStart(2, '0')}s</span>
+              <h2 style={styles.sectionTitle}>Explore the marketplace</h2>
+              <p style={styles.sectionSub}>Products listed by approved K-Merce vendors.</p>
             </div>
           </div>
 
           <div style={styles.productGrid}>
-            {PRODUCTS.map((prod) => (
+            {isLoadingProducts ? (
+              <p role="status">Loading products…</p>
+            ) : productsError ? (
+              <p role="alert">{productsError}</p>
+            ) : products.length === 0 ? (
+              <p>No products are currently listed by approved vendors.</p>
+            ) : products.map((prod) => (
               <div key={prod.id} style={styles.productCard}>
-                <div style={{ ...styles.productImage, backgroundColor: prod.imageColor }}>
-                  <span style={styles.productTag}>{prod.tag}</span>
-                  <button 
-                    onClick={() => toggleWishlist(prod.id)} 
+                <div style={{ ...styles.productImage, backgroundColor: '#f1f5f9' }}>
+                  {prod.imageUrl && (
+                    <img
+                      src={new URL(prod.imageUrl, BACKEND_URL).toString()}
+                      alt={prod.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  )}
+                  <button
+                    onClick={() => toggleWishlist(prod.id)}
                     style={styles.wishlistBtn}
+                    type="button"
+                    aria-label={`${wishlist.includes(prod.id) ? 'Remove' : 'Add'} ${prod.name} ${wishlist.includes(prod.id) ? 'from' : 'to'} wishlist`}
                   >
                     {wishlist.includes(prod.id) ? '❤️' : '🤍'}
                   </button>
@@ -539,18 +1384,13 @@ export default function LandingPage() {
                 <div style={styles.productInfo}>
                   <span style={styles.productCategory}>{prod.category}</span>
                   <h3 style={styles.productTitle}>{prod.name}</h3>
-                  
-                  <div style={styles.ratingRow}>
-                    <span style={styles.stars}>★ {prod.rating}</span>
-                    <span style={styles.reviewCount}>({prod.reviews} reviews)</span>
-                  </div>
+                  {prod.storeName && <span style={styles.productCategory}>Sold by {prod.storeName}</span>}
 
                   <div style={styles.priceRow}>
                     <div>
-                      <span style={styles.price}>${prod.price.toFixed(2)}</span>
-                      <span style={styles.originalPrice}>${prod.originalPrice.toFixed(2)}</span>
+                      <span style={styles.price}>KSh {Number(prod.price).toLocaleString()}</span>
                     </div>
-                    <button 
+                    <button
                       type="button"
                       onClick={() => addToCart(prod)}
                       style={styles.addCartBtn}
@@ -564,11 +1404,64 @@ export default function LandingPage() {
           </div>
         </main>
 
+        {/* 6. TRUST BADGES */}
+        <section style={styles.trustSection}>
+          <div style={styles.trustItem}>
+            <span style={styles.trustIcon}>🚚</span>
+            <div>
+              <strong>Marketplace for approved stores</strong>
+              <p style={styles.trustDesc}>Browse products listed by K-Merce vendors.</p>
+            </div>
+          </div>
+          <div style={styles.trustItem}>
+            <span style={styles.trustIcon}>♙</span>
+            <div>
+              <strong>Customer account tools</strong>
+              <p style={styles.trustDesc}>Verify your account and keep track of your orders.</p>
+            </div>
+          </div>
+          <div style={styles.trustItem}>
+            <span style={styles.trustIcon}>▤</span>
+            <div>
+              <strong>Vendor workspace</strong>
+              <p style={styles.trustDesc}>Approved sellers manage their stores, products, and orders.</p>
+            </div>
+          </div>
+          <div style={styles.trustItem}>
+            <span style={styles.trustIcon}>⚙</span>
+            <div>
+              <strong>Administrator tools</strong>
+              <p style={styles.trustDesc}>Review vendor applications, stores, accounts, and payments.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="vendor-application" style={styles.vendorApplication}>
+          <div style={styles.vendorApplicationContent}>
+            <div>
+              <span style={styles.vendorApplicationEyebrow}>SELL ON K-MERCE</span>
+              <h2 style={styles.vendorApplicationTitle}>Bring your independent store to K-Merce</h2>
+              <p style={styles.vendorApplicationDescription}>
+                Apply to join the marketplace, then manage your approved store and product listings from your seller workspace.
+              </p>
+              <Link to="/vendor-application" style={styles.vendorApplicationButton}>
+                Apply to be a vendor
+              </Link>
+            </div>
+            <div style={styles.vendorApplicationPreview}>
+              <strong>What happens next?</strong>
+              <p style={styles.vendorApplicationNote}>
+                Create an account and verify your email. Administrators review vendor applications and store names before seller features are enabled.
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* 7. NEWSLETTER SECTION */}
         <section style={styles.newsletter}>
           <div style={styles.newsletterContent}>
-            <h2>Join the K-Merce Club</h2>
-            <p>Subscribe to receive update drops, secret coupon codes, and tech news.</p>
+            <h2>Be part of K-Merce!</h2>
+            <p>Shop from independent stores, follow your orders, or apply to sell on the marketplace.</p>
             
             {subscribed ? (
               <div style={styles.subscribedMsg}>✓ Thank you for subscribing! Check your inbox soon.</div>
@@ -581,7 +1474,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* 8. ENTERPRISE FOOTER */}
+        {/* 8. K-MERCE FOOTER */}
         <footer style={styles.footer}>
           <div style={styles.footerGrid}>
             <div>
@@ -589,7 +1482,7 @@ export default function LandingPage() {
                 <img src="/brand-logo.png" alt="" style={{ width: '50px', height: '46px', objectFit: 'contain' }} />
                 <span style={{ ...styles.logoText, color: '#FFFFFF' }}>K-Merce</span>
               </div>
-              <p style={styles.footerText}>Your one-stop enterprise marketplace for quality hardware, electronics, and lifestyle goods.</p>
+              <p style={styles.footerText}>K-Merce brings shoppers and independent stores together, with dedicated tools for customers, vendors, and administrators.</p>
             </div>
 
             <div>
@@ -613,65 +1506,79 @@ export default function LandingPage() {
                     Register New Account
                   </button>
                 </li>
-                <li><Link to="/customer/dashboard#orders" style={styles.footerLink}>Track Order Status</Link></li>
+                <li><Link to="/vendor-application" style={styles.footerLink}>Apply to sell on K-Merce</Link></li>
               </ul>
             </div>
 
             <div>
-              <h4 style={styles.footerColTitle}>Customer Support</h4>
+              <h4 style={styles.footerColTitle}>Platform features</h4>
               <ul style={styles.footerList}>
-                <li><a href="#help" style={styles.footerLink}>Help Center & FAQ</a></li>
-                <li><a href="#returns" style={styles.footerLink}>Returns & Refunds</a></li>
-                <li><a href="#shipping" style={styles.footerLink}>Shipping Policies</a></li>
+                <li><Link to="/marketplace" style={styles.footerLink}>Browse approved stores</Link></li>
+                <li><Link to="/login" style={styles.footerLink}>Customer account</Link></li>
+                <li><Link to="/vendor-application" style={styles.footerLink}>Seller workspace</Link></li>
+                <li>
+                  <a
+                    href="#landing-faqs"
+                    aria-expanded={areFaqsVisible}
+                    aria-controls="landing-faqs"
+                    onClick={toggleFaqs}
+                    style={styles.footerLink}
+                  >
+                    FAQs
+                  </a>
+                </li>
               </ul>
             </div>
 
             <div>
-              <h4 style={styles.footerColTitle}>Accepted Payments</h4>
-              <p style={styles.footerText}>Visa, Mastercard, Apple Pay, PayPal, Bitcoin</p>
-              <div style={{ marginTop: '10px', fontSize: '1.2rem' }}>💳 🪙 📲 🏦</div>
+              <h4 style={styles.footerColTitle}>Checkout & payments</h4>
+              <p style={styles.footerText}>Place an order from the marketplace and pay using M-Pesa mobile money.</p>
+              <div aria-label="Accepted payment methods" style={{ display: 'flex', alignItems: 'center', gap: '18px', marginTop: '14px' }}>
+                <span style={{ color: '#43A047', fontSize: '1.2rem', fontWeight: 800, letterSpacing: '-0.04em' }}>M-PESA</span>
+                <span style={{ color: '#E60000', fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.04em' }}>airtel money</span>
+              </div>
             </div>
           </div>
+
+          <section
+            id="landing-faqs"
+            aria-labelledby="landing-faq-title"
+            hidden={!areFaqsVisible}
+            style={{ borderTop: '1px solid #1E293B', padding: '30px 0', marginBottom: '20px' }}
+          >
+            <h3 id="landing-faq-title" style={{ ...styles.footerColTitle, fontSize: '1.25rem', marginBottom: '12px' }}>
+              Frequently Asked Questions
+            </h3>
+            <details style={{ borderBottom: '1px solid #1E293B', padding: '12px 0' }}>
+              <summary style={{ color: '#FFFFFF', cursor: 'pointer', fontWeight: 600 }}>
+                How do I create an account?
+              </summary>
+              <p style={styles.footerText}>Choose Register New Account, then verify your email with the one-time code.</p>
+            </details>
+            <details style={{ borderBottom: '1px solid #1E293B', padding: '12px 0' }}>
+              <summary style={{ color: '#FFFFFF', cursor: 'pointer', fontWeight: 600 }}>
+                How do I place an order?
+              </summary>
+              <p style={styles.footerText}>Browse approved stores, add products to your cart, and place your order from the marketplace.</p>
+            </details>
+            <details style={{ borderBottom: '1px solid #1E293B', padding: '12px 0' }}>
+              <summary style={{ color: '#FFFFFF', cursor: 'pointer', fontWeight: 600 }}>
+                Which payment methods are available?
+              </summary>
+              <p style={styles.footerText}>K-Merce lists M-Pesa and Airtel Money. Available options are confirmed during checkout.</p>
+            </details>
+            <details style={{ borderBottom: '1px solid #1E293B', padding: '12px 0' }}>
+              <summary style={{ color: '#FFFFFF', cursor: 'pointer', fontWeight: 600 }}>
+                How can I sell on K-Merce?
+              </summary>
+              <p style={styles.footerText}>Submit a vendor application. After email verification, an administrator reviews it before seller features are enabled.</p>
+            </details>
+          </section>
 
           <div style={styles.footerBottom}>
-            © 2026 K-Merce Inc. All Rights Reserved. Designed for performance.
+            © 2026 K-Merce Marketplace. Connecting shoppers with independent stores.
           </div>
         </footer>
-
-        {/* 9. FLOATING CHAT WIDGET */}
-        <div style={styles.chatWidget}>
-          {isChatOpen ? (
-            <div style={styles.chatWindow}>
-              <div style={styles.chatHeader}>
-                <span>Live Support</span>
-                <button onClick={() => setIsChatOpen(false)} style={styles.chatCloseBtn}>✖</button>
-              </div>
-              
-              <div style={styles.chatBody}>
-                {chatMessages.map((msg, idx) => (
-                  <div key={idx} style={msg.sender === 'user' ? styles.userMessage : styles.supportMessage}>
-                    {msg.text}
-                  </div>
-                ))}
-              </div>
-              
-              <form onSubmit={handleSendMessage} style={styles.chatForm}>
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Type a message..."
-                  style={styles.chatInput}
-                />
-                <button type="submit" style={styles.chatSendBtn}>Send</button>
-              </form>
-            </div>
-          ) : (
-            <button onClick={() => setIsChatOpen(true)} style={styles.chatBubble}>
-              💬 Chat with us
-            </button>
-          )}
-        </div>
 
       </div>
       {isCartOpen && (
@@ -708,23 +1615,27 @@ export default function LandingPage() {
                 <div className="landing-cart-items">
                   {cartItems.map((item) => (
                     <article className="landing-cart-item" key={item.id}>
-                      <span className="landing-cart-item-image" style={{ backgroundColor: item.imageColor }}>🛍️</span>
+                      <span className="landing-cart-item-image" style={{ backgroundColor: '#f1f5f9' }}>
+                        {item.imageUrl
+                          ? <img src={new URL(item.imageUrl, BACKEND_URL).toString()} alt="" style={{ width: '100%', height: '100%', borderRadius: 'inherit', objectFit: 'cover' }} />
+                          : '🛍️'}
+                      </span>
                       <div className="landing-cart-item-info">
                         <strong>{item.name}</strong>
-                        <span>${item.price.toFixed(2)} each</span>
+                        <span>KSh {item.price.toFixed(2)} each</span>
                         <div className="landing-cart-quantity" aria-label={`Quantity of ${item.name}`}>
                           <button type="button" onClick={() => updateCartQuantity(item.id, -1)} aria-label={`Remove one ${item.name}`}>−</button>
                           <span>{item.quantity}</span>
                           <button type="button" onClick={() => updateCartQuantity(item.id, 1)} aria-label={`Add one ${item.name}`}>+</button>
                         </div>
                       </div>
-                      <strong className="landing-cart-item-total">${(item.price * item.quantity).toFixed(2)}</strong>
+                      <strong className="landing-cart-item-total">KSh {(item.price * item.quantity).toLocaleString()}</strong>
                     </article>
                   ))}
                 </div>
                 <footer className="landing-cart-footer">
-                  <div><span>Subtotal</span><strong>${cartTotal.toFixed(2)}</strong></div>
-                  <p>Shipping and taxes are calculated at checkout.</p>
+                  <div><span>Preview total</span><strong>KSh {cartTotal.toLocaleString()}</strong></div>
+                  <p>Visit the live marketplace to place an order and continue to M-Pesa checkout.</p>
                   <button type="button" onClick={() => setIsCartOpen(false)}>Continue shopping</button>
                 </footer>
               </>
@@ -1241,102 +2152,4 @@ const styles = {
     textAlign: 'center',
     fontSize: '0.8rem'
   },
-  
-  // --- CHAT WIDGET STYLES ---
-  chatWidget: {
-    position: 'fixed',
-    bottom: '24px',
-    right: '24px',
-    zIndex: 1000,
-  },
-  chatBubble: {
-    backgroundColor: '#4F46E5',
-    color: '#FFFFFF',
-    border: 'none',
-    borderRadius: '999px',
-    padding: '14px 24px',
-    fontSize: '1rem',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px'
-  },
-  chatWindow: {
-    width: '320px',
-    height: '420px',
-    backgroundColor: '#FFFFFF',
-    borderRadius: '12px',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden'
-  },
-  chatHeader: {
-    backgroundColor: '#4F46E5',
-    color: '#FFFFFF',
-    padding: '16px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    fontWeight: 'bold'
-  },
-  chatCloseBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#FFFFFF',
-    fontSize: '1.2rem',
-    cursor: 'pointer'
-  },
-  chatBody: {
-    flex: 1,
-    padding: '16px',
-    overflowY: 'auto',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    backgroundColor: '#F8FAFC'
-  },
-  supportMessage: {
-    backgroundColor: '#E2E8F0',
-    color: '#0F172A',
-    padding: '10px 14px',
-    borderRadius: '12px 12px 12px 2px',
-    alignSelf: 'flex-start',
-    maxWidth: '80%',
-    fontSize: '0.9rem'
-  },
-  userMessage: {
-    backgroundColor: '#4F46E5',
-    color: '#FFFFFF',
-    padding: '10px 14px',
-    borderRadius: '12px 12px 2px 12px',
-    alignSelf: 'flex-end',
-    maxWidth: '80%',
-    fontSize: '0.9rem'
-  },
-  chatForm: {
-    display: 'flex',
-    borderTop: '1px solid #E2E8F0',
-    padding: '12px',
-    backgroundColor: '#FFFFFF'
-  },
-  chatInput: {
-    flex: 1,
-    border: '1px solid #CBD5E1',
-    borderRadius: '20px',
-    padding: '8px 16px',
-    outline: 'none',
-    fontSize: '0.9rem'
-  },
-  chatSendBtn: {
-    backgroundColor: 'transparent',
-    color: '#4F46E5',
-    border: 'none',
-    fontWeight: 'bold',
-    marginLeft: '8px',
-    cursor: 'pointer',
-    padding: '0 8px'
-  }
 };

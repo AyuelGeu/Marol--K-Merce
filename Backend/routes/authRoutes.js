@@ -57,6 +57,11 @@ router.put(
 );
 router.put('/admin/vendors/:vendorId/approval', protect, authorize('admin'), async (req, res) => {
     try {
+        const decision = req.body.decision || 'approve';
+        if (!['approve', 'reject'].includes(decision)) {
+            return res.status(400).json({ message: 'Decision must be approve or reject' });
+        }
+
         const vendor = await Staff.findOne({
             _id: req.params.vendorId,
             $or: [
@@ -68,7 +73,11 @@ router.put('/admin/vendors/:vendorId/approval', protect, authorize('admin'), asy
             return res.status(404).json({ message: 'Pending vendor application was not found' });
         }
 
-        if (vendor.role === 'customer') {
+        if (decision === 'reject') {
+            vendor.role = 'customer';
+            vendor.vendorProfile.isApproved = false;
+            vendor.vendorApplication.status = 'rejected';
+        } else if (vendor.role === 'customer') {
             vendor.role = 'vendor';
             vendor.vendorProfile.storeName = vendor.vendorApplication.storeName;
             vendor.vendorProfile.pendingStoreName = '';
@@ -82,7 +91,7 @@ router.put('/admin/vendors/:vendorId/approval', protect, authorize('admin'), asy
         await vendor.save();
 
         return res.status(200).json({
-            message: 'Vendor account approved',
+            message: decision === 'approve' ? 'Vendor account approved' : 'Vendor application rejected',
             vendorId: vendor._id,
             isApproved: vendor.vendorProfile.isApproved,
             role: vendor.role,

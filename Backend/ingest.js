@@ -1,37 +1,68 @@
-const mongoose = require('mongoose');
 require('dotenv').config();
+const mongoose = require('mongoose');
+const Product = require('./models/Product');
+require('./models/Users');
 
-async function ingestData(textChunks) {
+const businessKnowledge = [
+    'To pay, you must have a valid phone number.',
+    'The transaction fee for sending 1000 KES is 12 KES.'
+];
+
+async function ingestData() {
+    if (!process.env.MONGO_URI) {
+        throw new Error('MONGO_URI must be configured before ingesting chatbot knowledge.');
+    }
+
+    await mongoose.connect(process.env.MONGO_URI);
+
     try {
-        await mongoose.connect(process.env.MONGO_URI);
-        const collection = mongoose.connection.db.collection('documents');
+        const products = await Product.find({ isActive: true })
+            .populate({
+                path: 'vendor',
+                match: {
+                    role: 'vendor',
+                    'vendorProfile.isApproved': true,
+                    'vendorProfile.storeNameStatus': 'approved',
+                    'vendorProfile.storeName': { $ne: '' }
+                },
+                select: 'vendorProfile.storeName'
+            })
+            .lean();
 
-        // Clear existing documents to prevent duplicates on re-runs
-        await collection.deleteMany({});
-
-        // Dynamically import the ES Module
+        const productKnowledge = products
+            .filter((product) => product.vendor)
+            .map((product) => [
+                `Marketplace product: ${product.name}.`,
+                `Store: ${product.vendor.vendorProfile.storeName}.`,
+                `Category: ${product.category}.`,
+                `Price: KSh ${product.price}.`,
+                product.description && `Description: ${product.description}`
+            ].filter(Boolean).join(' '));
+        const textChunks = [...businessKnowledge, ...productKnowledge];
         const { pipeline } = await import('@xenova/transformers');
         const generateEmbedding = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+        const documents = [];
 
-        for (const chunk of textChunks) {
-            const output = await generateEmbedding(chunk, { pooling: 'mean', normalize: true });
-            const embedding = Array.from(output.data);
-
-            await collection.insertOne({
-                text: chunk,
-                embedding: embedding
+        for (const text of textChunks) {
+            const output = await generateEmbedding(text, { pooling: 'mean', normalize: true });
+            documents.push({
+                text,
+                embedding: Array.from(output.data)
             });
         }
-        console.log("Data vectorized and saved successfully!");
+
+        const collection = mongoose.connection.db.collection('documents');
+        await collection.deleteMany({});
+        if (documents.length) {
+            await collection.insertMany(documents);
+        }
+        console.log(`Chatbot knowledge indexed: ${documents.length} documents.`);
     } finally {
         await mongoose.disconnect();
     }
 }
 
-// Pass your custom knowledge base chunks here
-ingestData([
-    // Add your system's text chunks or load them from a file here
-]).catch(error => {
-    console.error('Failed to ingest AI reference data:', error);
+ingestData().catch((error) => {
+    console.error('Unable to ingest chatbot knowledge:', error);
     process.exitCode = 1;
 });
