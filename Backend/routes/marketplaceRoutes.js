@@ -40,16 +40,18 @@ const removeStoredImage = async (imageUrl) => {
 };
 
 const getValidatedProductFields = (body) => {
-    const { name, description = '', category, price } = body;
+    const { name, description = '', category, price, inventory } = body;
     const trimmedName = typeof name === 'string' ? name.trim() : '';
     const trimmedDescription = typeof description === 'string' ? description.trim() : '';
     const trimmedCategory = typeof category === 'string' ? category.trim() : '';
     const numericPrice = Number(price);
+    const numericInventory = Number(inventory);
 
     if (!trimmedName || trimmedName.length > 120 || trimmedDescription.length > 2000 ||
         !trimmedCategory || trimmedCategory.length > 60 || !Number.isFinite(numericPrice) ||
         numericPrice <= 0 || numericPrice > 1000000000 ||
-        !Number.isInteger(numericPrice)) {
+        !Number.isInteger(numericPrice) || !Number.isInteger(numericInventory) ||
+        numericInventory < 0 || numericInventory > 1000000000) {
         return null;
     }
 
@@ -57,7 +59,8 @@ const getValidatedProductFields = (body) => {
         name: trimmedName,
         description: trimmedDescription,
         category: trimmedCategory,
-        price: numericPrice
+        price: numericPrice,
+        inventory: numericInventory
     };
 };
 
@@ -84,6 +87,7 @@ router.get('/products', async (req, res) => {
                 description: product.description,
                 category: product.category,
                 price: product.price,
+                isAvailable: product.inventory > 0,
                 imageUrl: product.imageUrl,
                 galleryUrls: product.galleryUrls || [],
                 vendorId: product.vendor._id,
@@ -109,7 +113,7 @@ router.post('/products', protect, authorize('vendor'), uploadProductImage, async
     const productFields = getValidatedProductFields(req.body);
     if (!productFields) {
         await removeUploadedImages(req.files);
-        return res.status(400).json({ message: 'Enter a product name, category, and positive whole-number price.' });
+        return res.status(400).json({ message: 'Enter a product name, category, positive whole-number price, and non-negative whole-number inventory.' });
     }
 
     if (!req.productThumbnailUrl) {
@@ -149,7 +153,7 @@ router.put('/products/:productId', protect, authorize('vendor'), (req, res, next
     const productFields = getValidatedProductFields(req.body);
     if (!productFields) {
         await removeUploadedImages(req.files);
-        return res.status(400).json({ message: 'Enter a product name, category, and positive whole-number price.' });
+        return res.status(400).json({ message: 'Enter a product name, category, positive whole-number price, and non-negative whole-number inventory.' });
     }
 
     try {

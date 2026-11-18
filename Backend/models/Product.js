@@ -31,6 +31,17 @@ const productSchema = new mongoose.Schema({
         min: 0.01,
         max: 1000000000
     },
+    inventory: {
+        type: Number,
+        required: true,
+        default: 0,
+        min: 0,
+        max: 1000000000,
+        validate: {
+            validator: Number.isInteger,
+            message: 'Inventory must be a whole number'
+        }
+    },
     imageUrl: {
         type: String,
         trim: true,

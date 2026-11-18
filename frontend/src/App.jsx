@@ -133,12 +133,14 @@ function App() {
         {/*Vendor Portal */}
         <Route element={<ProtectedRoute allowedRoles={['vendor']} />}>
           <Route path="/vendor/dashboard" element={<VendorDashboard />} />
+          <Route path="/vendor/products" element={<VendorDashboard />} />
           <Route path="/vendor/orders" element={<VendorDashboard />} />
         </Route>
         
         {/*Customer Portal */}
         <Route element={<ProtectedRoute allowedRoles={['customer']} />}>
           <Route path="/customer/dashboard" element={<CustomerDashboard />} />
+          <Route path="/customer/orders" element={<CustomerDashboard />} />
         </Route>
 
         <Route element={<ProtectedRoute />}>

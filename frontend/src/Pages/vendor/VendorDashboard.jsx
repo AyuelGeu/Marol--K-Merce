@@ -48,10 +48,12 @@ export default function VendorDashboard() {
     name: '',
     description: '',
     category: '',
-    price: ''
+    price: '',
+    inventory: ''
   });
   const location = useLocation();
   const isOrdersPage = location.pathname === '/vendor/orders';
+  const isProductsPage = location.pathname === '/vendor/products';
   const navigate = useNavigate();
   const vendorProfile = user.vendorProfile || {};
   const displayName = user.name && user.name !== 'New User' ? user.name : 'Vendor';
@@ -146,6 +148,7 @@ export default function VendorDashboard() {
       productData.append('description', productForm.description);
       productData.append('category', productForm.category);
       productData.append('price', String(Number(productForm.price)));
+      productData.append('inventory', String(Number(productForm.inventory)));
       if (productThumbnail) {
         productData.append('thumbnail', productThumbnail);
       }
@@ -177,7 +180,7 @@ export default function VendorDashboard() {
         setProductMessage('Product published to the marketplace.');
       }
       setEditingProductId('');
-      setProductForm({ name: '', description: '', category: '', price: '' });
+      setProductForm({ name: '', description: '', category: '', price: '', inventory: '' });
       setProductThumbnail(null);
       setProductGallery([]);
       setProductImageInputKey((key) => key + 1);
@@ -194,7 +197,8 @@ export default function VendorDashboard() {
       name: product.name,
       description: product.description || '',
       category: product.category,
-      price: String(product.price)
+      price: String(product.price),
+      inventory: String(product.inventory ?? 0)
     });
     setProductThumbnail(null);
     setProductGallery([]);
@@ -206,7 +210,7 @@ export default function VendorDashboard() {
 
   const cancelProductEdit = () => {
     setEditingProductId('');
-    setProductForm({ name: '', description: '', category: '', price: '' });
+    setProductForm({ name: '', description: '', category: '', price: '', inventory: '' });
     setProductThumbnail(null);
     setProductGallery([]);
     setProductImageInputKey((key) => key + 1);
@@ -731,38 +735,254 @@ export default function VendorDashboard() {
           line-height: 1.6;
         }
 
+        .vendor-workspace .vendor-product-list {
+          grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+          gap: 20px;
+          padding: 8px 22px 24px;
+        }
+
         .vendor-workspace .vendor-product-row {
-          padding: 13px;
-          border-color: #e5eee8;
-          border-radius: 11px;
-          background: #fcfefc;
-          transition: border-color .18s ease, box-shadow .18s ease;
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          overflow: hidden;
+          padding: 10px;
+          border-color: #e3ece6;
+          border-radius: 16px;
+          background: linear-gradient(160deg, #fff 0%, #fbfdfb 100%);
+          box-shadow: 0 7px 22px rgba(30, 75, 55, .055);
+          transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
         }
 
         .vendor-workspace .vendor-product-row:hover {
-          border-color: #c6e3d3;
-          box-shadow: 0 5px 14px rgba(35, 83, 64, .06);
+          border-color: #b8d9c7;
+          box-shadow: 0 14px 30px rgba(35, 83, 64, .12);
+          transform: translateY(-3px);
+        }
+
+        .vendor-workspace .vendor-product-card-media {
+          position: relative;
+          overflow: hidden;
+          width: 100%;
+          aspect-ratio: 4 / 3;
+          border-radius: 11px;
+          background: linear-gradient(145deg, #edf5ef, #e1eee5);
         }
 
         .vendor-workspace .vendor-product-thumbnail {
-          width: 54px;
-          height: 54px;
-          border-radius: 10px;
-          background: #edf5f0;
+          display: block;
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
         }
 
-        .vendor-workspace .vendor-product-row-actions button {
-          min-height: 33px;
-          border-color: #cfe5d7;
-          border-radius: 8px;
+        .vendor-workspace .vendor-product-image-placeholder {
+          display: grid;
+          width: 100%;
+          height: 100%;
+          align-content: center;
+          justify-items: center;
+          gap: 7px;
+          color: #789286;
+        }
+
+        .vendor-workspace .vendor-product-image-placeholder > span {
+          font-size: 32px;
+          line-height: 1;
+        }
+
+        .vendor-workspace .vendor-product-image-placeholder > small {
+          font-size: 11px;
+          font-weight: 650;
+        }
+
+        .vendor-workspace .vendor-product-category,
+        .vendor-workspace .vendor-product-gallery-count {
+          position: absolute;
+          display: inline-flex;
+          min-height: 26px;
+          align-items: center;
+          padding: 0 9px;
+          border: 1px solid rgba(255, 255, 255, .72);
+          border-radius: 999px;
+          background: rgba(255, 255, 255, .92);
+          box-shadow: 0 2px 8px rgba(19, 55, 39, .1);
+          color: #315947;
+          font-size: 10px;
+          font-weight: 700;
+          backdrop-filter: blur(8px);
+        }
+
+        .vendor-workspace .vendor-product-category {
+          top: 10px;
+          left: 10px;
+          max-width: calc(100% - 20px);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .vendor-workspace .vendor-product-gallery-count {
+          right: 10px;
+          bottom: 10px;
+          gap: 5px;
+          color: #5a6e63;
+        }
+
+        .vendor-workspace .vendor-product-gallery-count > span {
+          font-size: 12px;
+        }
+
+        .vendor-workspace .vendor-product-card-body {
+          display: flex;
+          min-width: 0;
+          flex: 1;
+          flex-direction: column;
+          padding: 14px 4px 3px;
+        }
+
+        .vendor-workspace .vendor-product-card-copy {
+          min-width: 0;
+        }
+
+        .vendor-workspace .vendor-product-card-copy h3 {
+          overflow: hidden;
+          margin: 0;
+          color: #203d31;
+          font-size: 15px;
+          font-weight: 750;
+          line-height: 1.4;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .vendor-workspace .vendor-product-card-copy p {
+          display: -webkit-box;
+          min-height: 36px;
+          overflow: hidden;
+          margin: 6px 0 0;
+          color: #77877e;
+          font-size: 11px;
+          line-height: 1.6;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 2;
+        }
+
+        .vendor-workspace .vendor-product-inventory {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          margin-top: 12px;
+          padding: 8px 10px;
+          border-radius: 9px;
+          background: #f5f8f5;
+        }
+
+        .vendor-workspace .vendor-product-inventory > span {
+          color: #84958b;
+          font-size: 10px;
+          font-weight: 650;
+        }
+
+        .vendor-workspace .vendor-product-inventory > strong {
+          color: #28714d;
+          font-size: 10px;
+          font-weight: 750;
+        }
+
+        .vendor-workspace .vendor-product-inventory.is-empty {
+          background: #fff5f2;
+        }
+
+        .vendor-workspace .vendor-product-inventory.is-empty > strong {
+          color: #ad5144;
+        }
+
+        .vendor-workspace .vendor-product-card-footer {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 10px;
+          margin-top: 15px;
+          padding-top: 12px;
+          border-top: 1px solid #edf2ee;
+        }
+
+        .vendor-workspace .vendor-product-price {
+          display: grid;
+          min-width: 0;
+          gap: 2px;
+        }
+
+        .vendor-workspace .vendor-product-price > span {
+          color: #98a79e;
+          font-size: 9px;
+          font-weight: 750;
+          letter-spacing: .1em;
+        }
+
+        .vendor-workspace .vendor-product-price > strong {
+          color: #17684d;
+          font-size: 16px;
+          font-weight: 800;
+          white-space: nowrap;
+        }
+
+        .vendor-workspace .vendor-product-edit {
+          min-height: 35px;
+          padding: 0 12px;
+          border: 1px solid #cfe5d7;
+          border-radius: 9px;
           background: #f0f8f2;
           color: #26734f;
-          transition: background .18s ease, border-color .18s ease;
+          cursor: pointer;
+          font: inherit;
+          font-size: 10px;
+          font-weight: 750;
+          white-space: nowrap;
+          transition: background .18s ease, border-color .18s ease, transform .18s ease;
         }
 
-        .vendor-workspace .vendor-product-row-actions button:hover:not(:disabled) {
+        .vendor-workspace .vendor-product-edit:hover:not(:disabled) {
+          transform: translateY(-1px);
           border-color: #a9d2b8;
           background: #e3f3e8;
+        }
+
+        .vendor-workspace .vendor-product-edit:disabled {
+          cursor: not-allowed;
+          opacity: .55;
+        }
+
+        .vendor-workspace .vendor-product-empty {
+          display: grid;
+          justify-items: center;
+          gap: 8px;
+          margin: 4px 22px 22px;
+          padding: 34px 20px;
+          border: 1px dashed #cddfd2;
+          border-radius: 14px;
+          background: linear-gradient(145deg, #fbfdfb, #f3f8f4);
+          color: #71877a;
+          text-align: center;
+        }
+
+        .vendor-workspace .vendor-product-empty > span {
+          color: #438565;
+          font-size: 28px;
+          line-height: 1;
+        }
+
+        .vendor-workspace .vendor-product-empty > strong {
+          color: #345746;
+          font-size: 13px;
+        }
+
+        .vendor-workspace .vendor-product-empty > p {
+          max-width: 360px;
+          margin: 0;
+          font-size: 11px;
         }
 
         .vendor-workspace .vendor-order-card {
@@ -902,15 +1122,6 @@ export default function VendorDashboard() {
             padding-left: 16px;
           }
 
-          .vendor-workspace .vendor-product-row {
-            flex-wrap: wrap;
-          }
-
-          .vendor-workspace .vendor-product-row-actions {
-            width: 100%;
-            justify-content: space-between;
-            padding-left: 66px;
-          }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -930,11 +1141,11 @@ export default function VendorDashboard() {
         </Link>
         <div className="workspace-nav-label">YOUR WORKSPACE</div>
         <nav className="workspace-nav" aria-label="Vendor navigation">
-          <a className={`workspace-nav-link${isOrdersPage ? '' : ' is-active'}`} href={isOrdersPage ? '/vendor/dashboard#overview' : '#overview'}><span>▦</span>Overview</a>
-          <a className="workspace-nav-link" href={isOrdersPage ? '/vendor/dashboard#store' : '#store'}><span>◇</span>Store profile</a>
-          <a className="workspace-nav-link" href={isOrdersPage ? '/vendor/dashboard#products' : '#products'}><span>▧</span>Products</a>
+          <a className={`workspace-nav-link${!isOrdersPage && !isProductsPage ? ' is-active' : ''}`} href={isOrdersPage || isProductsPage ? '/vendor/dashboard#overview' : '#overview'}><span>▦</span>Overview</a>
+          <a className="workspace-nav-link" href={isOrdersPage || isProductsPage ? '/vendor/dashboard#store' : '#store'}><span>◇</span>Store profile</a>
+          <Link className={`workspace-nav-link${isProductsPage ? ' is-active' : ''}`} to="/vendor/products"><span>▧</span>Products</Link>
           <Link className={`workspace-nav-link${isOrdersPage ? ' is-active' : ''}`} to="/vendor/orders"><span>▤</span>Orders</Link>
-          <a className="workspace-nav-link" href={isOrdersPage ? '/vendor/dashboard#account' : '#account'}><span>♙</span>Account</a>
+          <a className="workspace-nav-link" href={isOrdersPage || isProductsPage ? '/vendor/dashboard#account' : '#account'}><span>♙</span>Account</a>
         </nav>
         <div className="workspace-sidebar-bottom">
           <div className="workspace-secure-card"><span className="workspace-live-dot" /><div><strong>Seller account</strong><small>Role-protected workspace</small></div></div>
@@ -944,7 +1155,7 @@ export default function VendorDashboard() {
 
       <main className="workspace-main">
         <header className="workspace-topbar">
-          <div className="workspace-breadcrumb">Seller workspace <span>/</span> {isOrdersPage ? 'Orders' : 'Overview'}</div>
+          <div className="workspace-breadcrumb">Seller workspace <span>/</span> {isOrdersPage ? 'Orders' : isProductsPage ? 'Products' : 'Overview'}</div>
           <div className="workspace-user-menu">
             <span className="workspace-user-avatar vendor-avatar">
               {profilePictureUrl
@@ -957,7 +1168,7 @@ export default function VendorDashboard() {
         </header>
 
         <div className="workspace-content">
-          {!isOrdersPage && <>
+          {!isOrdersPage && !isProductsPage && <>
           <section className="workspace-welcome" id="overview">
             <div>
               <div className="workspace-eyebrow">SELLER WORKSPACE</div>
@@ -1096,7 +1307,9 @@ export default function VendorDashboard() {
             </div>
           </section>
 
-          <section className="workspace-panel vendor-products-panel" id="products">
+          </>}
+
+          {isProductsPage && <section className="workspace-panel vendor-products-panel" id="products">
             <div className="workspace-panel-heading">
               <div>
                 <div className="workspace-eyebrow">YOUR CATALOG</div>
@@ -1129,6 +1342,19 @@ export default function VendorDashboard() {
                 <label>
                   Price (KSh)
                   <input name="price" type="number" min="1" step="1" value={productForm.price} onChange={updateProductForm} required />
+                </label>
+                <label>
+                  Available inventory
+                  <input
+                    name="inventory"
+                    type="number"
+                    min="0"
+                    max="1000000000"
+                    step="1"
+                    value={productForm.inventory}
+                    onChange={updateProductForm}
+                    required
+                  />
                 </label>
                 <label className="vendor-product-image-field">
                   Product thumbnail (JPG, PNG, WebP, or GIF; max 5 MB)
@@ -1187,41 +1413,69 @@ export default function VendorDashboard() {
             {isLoadingProducts ? (
               <p className="vendor-data-state">Loading products…</p>
             ) : productsError ? null : products.length === 0 ? (
-              <p className="vendor-data-state">You haven’t published any products yet.</p>
+              <div className="vendor-product-empty">
+                <span aria-hidden="true">▧</span>
+                <strong>Your catalog is ready for its first product</strong>
+                <p>Publish a product using the form above and it will appear here for you to manage.</p>
+              </div>
             ) : (
               <div className="vendor-product-list">
                 {products.map((product) => (
                   <article className="vendor-product-row" key={product._id}>
-                    {product.imageUrl && (
-                      <img
-                        className="vendor-product-thumbnail"
-                        src={new URL(product.imageUrl, BACKEND_URL).toString()}
-                        alt=""
-                      />
-                    )}
-                    <div>
-                      <strong>{product.name}</strong>
-                      <span>
-                        {product.category}
-                        {product.galleryUrls?.length > 0 && ` · ${product.galleryUrls.length} gallery photos`}
-                      </span>
+                    <div className="vendor-product-card-media">
+                      {product.imageUrl ? (
+                        <img
+                          className="vendor-product-thumbnail"
+                          src={new URL(product.imageUrl, BACKEND_URL).toString()}
+                          alt={product.name}
+                        />
+                      ) : (
+                        <div className="vendor-product-image-placeholder">
+                          <span aria-hidden="true">▧</span>
+                          <small>Product image</small>
+                        </div>
+                      )}
+                      <span className="vendor-product-category">{product.category}</span>
+                      {product.galleryUrls?.length > 0 && (
+                        <span className="vendor-product-gallery-count">
+                          <span aria-hidden="true">▧</span>
+                          {product.galleryUrls.length} {product.galleryUrls.length === 1 ? 'photo' : 'photos'}
+                        </span>
+                      )}
                     </div>
-                    <div className="vendor-product-row-actions">
-                      <strong>KSh {Number(product.price).toFixed(2)}</strong>
-                      <button
-                        type="button"
-                        onClick={() => editProduct(product)}
-                        disabled={!canListProducts || Boolean(editingProductId) || isPublishingProduct}
-                      >
-                        Edit
-                      </button>
+                    <div className="vendor-product-card-body">
+                      <div className="vendor-product-card-copy">
+                        <h3 title={product.name}>{product.name}</h3>
+                        <p>{product.description?.trim() || 'No description provided for this product.'}</p>
+                      </div>
+                      <div className={`vendor-product-inventory${product.inventory > 0 ? '' : ' is-empty'}`}>
+                        <span>Inventory</span>
+                        <strong>{product.inventory > 0 ? `${product.inventory} available` : 'Out of stock'}</strong>
+                      </div>
+                      <div className="vendor-product-card-footer">
+                        <div className="vendor-product-price">
+                          <span>PRICE</span>
+                          <strong>KSh {Number(product.price).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}</strong>
+                        </div>
+                        <button
+                          className="vendor-product-edit"
+                          type="button"
+                          onClick={() => editProduct(product)}
+                          disabled={!canListProducts || Boolean(editingProductId) || isPublishingProduct}
+                          aria-label={`Edit ${product.name}`}
+                        >
+                          Edit listing
+                        </button>
+                      </div>
                     </div>
                   </article>
                 ))}
               </div>
             )}
-          </section>
-          </>}
+          </section>}
 
           {isOrdersPage && <section className="workspace-panel vendor-orders-panel" id="orders">
             <div className="workspace-panel-heading">
@@ -1268,7 +1522,7 @@ export default function VendorDashboard() {
             )}
           </section>}
 
-          {!isOrdersPage && <>
+          {!isOrdersPage && !isProductsPage && <>
           <section className="workspace-panel workspace-account-panel" id="account">
             <div className="workspace-panel-heading">
               <div>

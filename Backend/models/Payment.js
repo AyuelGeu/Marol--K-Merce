@@ -67,6 +67,11 @@ const paymentSchema = new mongoose.Schema({
     type: [paymentItemSchema],
     required: true
   },
+  inventoryStatus: {
+    type: String,
+    enum: ['not_reserved', 'reserved', 'committed', 'released'],
+    default: 'not_reserved'
+  },
   status: {
     type: String,
     enum: ['pending', 'paid', 'failed', 'review'],

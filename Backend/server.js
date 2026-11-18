@@ -26,6 +26,9 @@ const marketplaceRoutes = require('./routes/marketplaceRoutes');
 const mpesaRoutes = require('./routes/mpesaRoutes');
 const app = express();
 
+app.use(cors()); // Allows all origins during development
+app.use(express.json());
+
 // --- CRITICAL FIX FOR NGROK ---
 // Tells Express to trust the Ngrok proxy so it allows 'secure: true' cookies to be sent over the tunnel.
 app.set('trust proxy', 1);
@@ -164,11 +167,6 @@ app.post('/api/chat', async (req, res) => {
 app.get('/', (req, res) => {
  res.send('AI Backend is running');
 });
-// Database Connection
-mongoose.connect(process.env.MONGO_URI)
- .then(() => console.log('MongoDB Connected to the database'))
- .catch(err => console.log(err))
-
 // --- Google OAuth 2.0 Strategy Configuration ---
 passport.use(new GoogleStrategy({
         clientID: process.env.GOOGLE_CLIENT_ID,
@@ -267,8 +265,8 @@ passport.deserializeUser(async(id, done) => {
 // --- Database Connection ---
 const connectDB = async() => {
     try {
-        const conn = await mongoose.connect(process.env.MONGO_URI);
-        console.log(`[Database] MongoDB Connected successfully on host: ${conn.connection.host}`);
+        await mongoose.connect(process.env.MONGO_URI);
+        console.log('[Database] MongoDB Connected successfully.');
     } catch (error) {
         console.error(`[Database] Connection Error: ${error.message}`);
         throw error;
@@ -440,11 +438,14 @@ app.use((err, req, res, next) => {
 
 // --- Server Initialization ---
 const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log('Server running on port ${PORT}');
+});
 
 const startServer = async() => {
     await connectDB();
     await new Promise((resolve, reject) => {
-        const server = app.listen(PORT, () => {
+        const server = app.listen(PORT, '0.0.0.0', () => {
             console.log(`[Server] Running in ${process.env.NODE_ENV} mode on port ${PORT}`);
             resolve();
         });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../vendor/RoleDashboard.css';
 
@@ -18,7 +18,9 @@ export default function CustomerDashboard() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [cancellingOrderId, setCancellingOrderId] = useState('');
   const [orderActionError, setOrderActionError] = useState('');
+  const location = useLocation();
   const navigate = useNavigate();
+  const isOrdersPage = location.pathname === '/customer/orders';
   const displayName = user.name && user.name !== 'New User' ? user.name : 'there';
   const joinedDate = user.createdAt
     ? new Date(user.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
@@ -51,6 +53,15 @@ export default function CustomerDashboard() {
       isCurrent = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isOrdersPage && location.hash) {
+      document.getElementById(location.hash.slice(1))?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  }, [isOrdersPage, location.hash]);
 
   const cancelOrder = async (orderId) => {
     setCancellingOrderId(orderId);
@@ -743,10 +754,10 @@ export default function CustomerDashboard() {
         </Link>
         <div className="workspace-nav-label">YOUR ACCOUNT</div>
         <nav className="workspace-nav" aria-label="Customer navigation">
-          <a className="workspace-nav-link is-active" href="#overview"><span>▦</span>Overview</a>
-          <a className="workspace-nav-link" href="#orders"><span>▤</span>My orders</a>
-          <a className="workspace-nav-link" href="#profile"><span>♙</span>Profile</a>
-          <a className="workspace-nav-link" href="#security"><span>⌑</span>Security</a>
+          <Link className={`workspace-nav-link${isOrdersPage ? '' : ' is-active'}`} to="/customer/dashboard"><span>▦</span>Overview</Link>
+          <Link className={`workspace-nav-link${isOrdersPage ? ' is-active' : ''}`} to="/customer/orders"><span>▤</span>My orders</Link>
+          <Link className="workspace-nav-link" to="/customer/dashboard#profile"><span>♙</span>Profile</Link>
+          <Link className="workspace-nav-link" to="/customer/dashboard#security"><span>⌑</span>Security</Link>
         </nav>
         <div className="workspace-sidebar-bottom">
           <div className="workspace-secure-card"><span className="workspace-live-dot" /><div><strong>Customer account</strong><small>Your personal marketplace space</small></div></div>
@@ -756,7 +767,7 @@ export default function CustomerDashboard() {
 
       <main className="workspace-main">
         <header className="workspace-topbar">
-          <div className="workspace-breadcrumb">My account <span>/</span> Overview</div>
+          <div className="workspace-breadcrumb">My account <span>/</span> {isOrdersPage ? 'Orders' : 'Overview'}</div>
           <div className="workspace-user-menu">
             <span className="workspace-user-avatar customer-avatar">
               {(displayName[0] || 'C').toUpperCase()}
@@ -778,16 +789,16 @@ export default function CustomerDashboard() {
         </header>
 
         <div className="workspace-content">
-          <section className="workspace-welcome" id="overview">
+          <section className="workspace-welcome" id={isOrdersPage ? undefined : 'overview'}>
             <div>
-              <div className="workspace-eyebrow">YOUR MARKETPLACE ACCOUNT</div>
-              <h1>Hello, {displayName}</h1>
-              <p>Welcome to your account. Your marketplace details are all in one place.</p>
+              <div className="workspace-eyebrow">{isOrdersPage ? 'PURCHASE HISTORY' : 'YOUR MARKETPLACE ACCOUNT'}</div>
+              <h1>{isOrdersPage ? 'My orders' : `Hello, ${displayName}`}</h1>
+              <p>{isOrdersPage ? 'Review your purchases and check their delivery status.' : 'Welcome to your account. Your marketplace details are all in one place.'}</p>
             </div>
             <span className="workspace-role-chip customer-chip"><span /> Customer</span>
           </section>
 
-          <section className="workspace-card-grid" aria-label="Customer account overview">
+          {!isOrdersPage && <section className="workspace-card-grid" aria-label="Customer account overview">
             <article className="workspace-info-card">
               <span className="workspace-info-icon customer-icon">♙</span>
               <span className="workspace-info-label">ACCOUNT TYPE</span>
@@ -806,9 +817,9 @@ export default function CustomerDashboard() {
               <strong className="workspace-info-value">{addressCount}</strong>
               <span className="workspace-info-detail">{addressCount === 1 ? 'Address on your account' : 'Addresses on your account'}</span>
             </article>
-          </section>
+          </section>}
 
-          <section className="workspace-panel customer-orders-panel" id="orders">
+          {isOrdersPage && <section className="workspace-panel customer-orders-panel">
             <div className="workspace-panel-heading">
               <div>
                 <div className="workspace-eyebrow">PURCHASE HISTORY</div>
@@ -865,9 +876,9 @@ export default function CustomerDashboard() {
                 <Link className="customer-orders-shop-link" to="/marketplace">Continue shopping</Link>
               </div>
             )}
-          </section>
+          </section>}
 
-          <section className="workspace-panel" id="profile">
+          {!isOrdersPage && <section className="workspace-panel" id="profile">
             <div className="workspace-panel-heading">
               <div>
                 <div className="workspace-eyebrow">PERSONAL INFORMATION</div>
@@ -907,9 +918,9 @@ export default function CustomerDashboard() {
                 <strong>{joinedDate}</strong>
               </div>
             </div>
-          </section>
+          </section>}
 
-          <section className="workspace-panel workspace-account-panel" id="security">
+          {!isOrdersPage && <section className="workspace-panel workspace-account-panel" id="security">
             <div className="workspace-panel-heading">
               <div>
                 <div className="workspace-eyebrow">SECURITY</div>
@@ -927,7 +938,7 @@ export default function CustomerDashboard() {
               <div><strong>Registered email</strong><small>{user.email || 'No email available'}</small></div>
               <Link className="workspace-text-link" to="/forgot-password">Reset password</Link>
             </div>
-          </section>
+          </section>}
 
           <footer className="workspace-footer"><span>K-Merce Customer Account</span><span>Member since {joinedDate}</span></footer>
         </div>

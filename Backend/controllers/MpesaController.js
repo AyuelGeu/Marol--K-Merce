@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const Payment = require('../models/Payment');
 const createPaidOrder = require('../utils/createPaidOrder');
+const { reserveForPayment, releaseForFailedPayment } = require('../utils/productInventory');
 const { sendPaymentReceiptEmail } = require('../utils/sendEmail');
 
 const normalizePhone = (value) => {
@@ -13,9 +14,28 @@ const normalizePhone = (value) => {
   return digits;
 };
 
-const STK_QUERY_INTERVAL_MS = 15000;
+const STK_QUERY_INTERVAL_MS = 30000;
+const STK_QUERY_GLOBAL_INTERVAL_MS = 3000;
 const PAYMENT_CONFIRMATION_TIMEOUT_MS = 180000;
 const RECEIPT_EMAIL_LOCK_TIMEOUT_MS = 300000;
+let stkQueryQueue = Promise.resolve();
+let nextStkQueryAt = 0;
+let stkQueryBackoffUntil = 0;
+
+const queueStkStatusQuery = (query) => {
+  const queuedQuery = stkQueryQueue.then(async () => {
+    const waitUntil = Math.max(nextStkQueryAt, stkQueryBackoffUntil);
+    const delay = Math.max(0, waitUntil - Date.now());
+    if (delay) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+
+    nextStkQueryAt = Date.now() + STK_QUERY_GLOBAL_INTERVAL_MS;
+    return query();
+  });
+  stkQueryQueue = queuedQuery.catch(() => {});
+  return queuedQuery;
+};
 
 const sendReceiptEmailOnce = async (payment, order) => {
   const now = new Date();
@@ -157,7 +177,7 @@ exports.stkPush = async (req, res) => {
   const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
   let payment;
   try {
-    payment = await Payment.create({
+    payment = await reserveForPayment({
       resultCode: -1,
       resultDesc: 'Waiting for M-Pesa payment confirmation.',
       amount,
@@ -190,7 +210,12 @@ exports.stkPush = async (req, res) => {
       payment.resultCode = Number(response.data?.ResponseCode) || -1;
       payment.resultDesc = response.data?.ResponseDescription || 'M-Pesa rejected the payment request.';
       await payment.save();
-      return res.status(502).json({ error: payment.resultDesc });
+      try {
+        await releaseForFailedPayment(payment._id);
+      } catch (releaseError) {
+        console.error('Unable to release inventory for a rejected M-Pesa payment:', releaseError);
+      }
+      return res.status(502).json({ error: payment.resultDesc, paymentId: payment._id });
     }
     if (!response.data?.CheckoutRequestID || !response.data?.MerchantRequestID) {
       payment.status = 'review';
@@ -213,6 +238,15 @@ exports.stkPush = async (req, res) => {
       amount
     });
   } catch (error) {
+    if (!payment && error.code === 'INSUFFICIENT_INVENTORY') {
+      return res.status(409).json({
+        error: `${error.productName || 'One or more products'} no longer have enough inventory. Refresh the marketplace and adjust your cart.`
+      });
+    }
+    if (!payment) {
+      console.error('Unable to reserve inventory for M-Pesa payment:', error);
+      return res.status(503).json({ error: 'Unable to reserve product inventory. Please try again.' });
+    }
     console.error('M-Pesa STK Push error:', error.response?.data || error.message);
     if (payment) {
       const isDefinitiveRejection = error.response?.status >= 400 &&
@@ -226,6 +260,13 @@ exports.stkPush = async (req, res) => {
         await payment.save();
       } catch (saveError) {
         console.error('Unable to save M-Pesa payment initiation result:', saveError);
+      }
+      if (payment.status === 'failed') {
+        try {
+          await releaseForFailedPayment(payment._id);
+        } catch (releaseError) {
+          console.error('Unable to release inventory after M-Pesa payment failure:', releaseError);
+        }
       }
       return res.status(502).json({
         error: payment.resultDesc,
@@ -247,7 +288,10 @@ exports.stkCallback = async (req, res) => {
       console.error('M-Pesa callback did not match a payment:', CheckoutRequestID);
       return res.status(200).send('Callback received');
     }
-    if (payment.status !== 'pending') return res.status(200).send('Callback received');
+    if (payment.status !== 'pending' &&
+        !(payment.status === 'review' && payment.inventoryStatus === 'reserved')) {
+      return res.status(200).send('Callback received');
+    }
 
     const code = Number(ResultCode);
     if (code !== 0) {
@@ -255,6 +299,11 @@ exports.stkCallback = async (req, res) => {
       payment.resultCode = code;
       payment.resultDesc = ResultDesc || 'M-Pesa payment was not completed.';
       await payment.save();
+      try {
+        await releaseForFailedPayment(payment._id);
+      } catch (releaseError) {
+        console.error('Unable to release inventory for a failed M-Pesa payment:', releaseError);
+      }
       return res.status(200).send('Callback received');
     }
 
@@ -329,7 +378,7 @@ exports.paymentStatus = async (req, res) => {
           const timestamp = moment().format('YYYYMMDDHHmmss');
           const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
           try {
-            const response = await axios.post(
+            const response = await queueStkStatusQuery(() => axios.post(
               `${req.mpesaBaseUrl}/mpesa/stkpushquery/v1/query`,
               {
                 BusinessShortCode: shortcode,
@@ -337,8 +386,11 @@ exports.paymentStatus = async (req, res) => {
                 Timestamp: timestamp,
                 CheckoutRequestID: paymentToQuery.checkoutRequestID
               },
-              { headers: { Authorization: `Bearer ${req.mpesaToken}` } }
-            );
+              {
+                headers: { Authorization: `Bearer ${req.mpesaToken}` },
+                timeout: 15000
+              }
+            ));
             const result = response.data;
             const resultCode = Number(result?.ResultCode);
             const idsMatch = !result?.CheckoutRequestID ||
@@ -376,7 +428,13 @@ exports.paymentStatus = async (req, res) => {
               );
             }
           } catch (error) {
-            console.error('M-Pesa STK status query failed:', error.response?.data || error.message);
+            const errorCode = error.response?.data?.fault?.detail?.errorcode;
+            if (errorCode === 'policies.ratelimit.SpikeArrestViolation') {
+              stkQueryBackoffUntil = Date.now() + 60000;
+              console.warn('M-Pesa status queries were rate limited; pausing retries for one minute.');
+            } else {
+              console.error('M-Pesa STK status query failed:', error.response?.data || error.message);
+            }
           }
         }
       }
@@ -395,6 +453,10 @@ exports.paymentStatus = async (req, res) => {
         );
         payment = await Payment.findById(payment._id);
       }
+    }
+
+    if (payment.status === 'failed') {
+      await releaseForFailedPayment(payment._id);
     }
 
     const order = payment.status === 'paid' ? await createPaidOrder(payment) : null;

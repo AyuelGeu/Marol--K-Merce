@@ -121,6 +121,15 @@ export default function Marketplace() {
           setPaymentError('');
           setPaymentSuccess(`Payment received. Order ${response.data.order.id} has been placed.`);
           setPendingPaymentId('');
+          axios.get(`${BACKEND_URL}/api/marketplace/products`, {
+            headers: { 'ngrok-skip-browser-warning': 'true' }
+          }).then((productsResponse) => {
+            if (isCurrent) setProducts(productsResponse.data);
+          }).catch((error) => {
+            if (isCurrent) {
+              setLoadError(error.response?.data?.message || 'Unable to refresh product availability.');
+            }
+          });
         } else if (response.data.status === 'failed') {
           setPaymentSuccess('');
           setPaymentError(response.data.resultDesc || 'M-Pesa payment was not completed. You can try again.');
@@ -146,7 +155,7 @@ export default function Marketplace() {
     };
 
     checkPaymentStatus();
-    const intervalId = window.setInterval(checkPaymentStatus, 3000);
+    const intervalId = window.setInterval(checkPaymentStatus, 5000);
     return () => {
       isCurrent = false;
       window.clearInterval(intervalId);
@@ -175,6 +184,10 @@ export default function Marketplace() {
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
 
   const addToCart = (product) => {
+    if (product.isAvailable === false) {
+      setPaymentError(`${product.name} is no longer available.`);
+      return;
+    }
     setPaymentError('');
     setPaymentSuccess('');
     setCartItems((items) => {
@@ -203,6 +216,13 @@ export default function Marketplace() {
     }
     if (cartItems.length === 0) {
       setPaymentError('Add items to your cart before paying.');
+      return;
+    }
+    const unavailableItem = cartItems.find((item) => (
+      products.some((product) => product.id === item.id && product.isAvailable === false)
+    ));
+    if (unavailableItem) {
+      setPaymentError(`${unavailableItem.name} is no longer available. Remove it from your cart to continue.`);
       return;
     }
 
@@ -349,7 +369,9 @@ export default function Marketplace() {
                       <span className="marketplace-store-name">Sold by {product.storeName}</span>
                       <div className="marketplace-product-buy">
                         <strong>KSh {Number(product.price).toFixed(2)}</strong>
-                        {isLoggedIn && (
+                        {product.isAvailable === false ? (
+                          <span className="marketplace-product-unavailable" role="status">Not available</span>
+                        ) : isLoggedIn && (
                           <button
                             type="button"
                             disabled={isPaying || Boolean(pendingPaymentId)}
@@ -434,7 +456,7 @@ export default function Marketplace() {
           {paymentSuccess && (
             <p className="marketplace-success" role="status">
               {paymentSuccess}
-              {!pendingPaymentId && <Link to="/customer/dashboard#orders"> View my orders</Link>}
+              {!pendingPaymentId && <Link to="/customer/orders"> View my orders</Link>}
             </p>
           )}
         </aside>}

@@ -22,8 +22,11 @@ module.exports = async (payment) => {
         }
     }
 
-    if (!payment.order || !payment.order.equals(order._id)) {
+    if (!payment.order || !payment.order.equals(order._id) || payment.inventoryStatus === 'reserved') {
         payment.order = order._id;
+        if (payment.inventoryStatus === 'reserved') {
+            payment.inventoryStatus = 'committed';
+        }
         await payment.save();
     }
 

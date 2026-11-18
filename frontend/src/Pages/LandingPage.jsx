@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Login from '../Auth/Login';
 import Register from '../Auth/Register';
 
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://192.168.1.187:5173/'
+});
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 const BANNERS = [
@@ -27,6 +30,40 @@ export default function LandingPage() {
   
   const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
   const cartTotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+  const randomFeaturedProducts = useMemo(() => {
+    if (products.length === 0) return [];
+
+    const shuffledProducts = [...products];
+    for (let index = shuffledProducts.length - 1; index > 0; index -= 1) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      [shuffledProducts[index], shuffledProducts[randomIndex]] =
+        [shuffledProducts[randomIndex], shuffledProducts[index]];
+    }
+
+    const productsByCategory = new Map();
+    shuffledProducts.forEach((product) => {
+      const category = product.category?.trim() || 'Other';
+      if (!productsByCategory.has(category)) {
+        productsByCategory.set(category, []);
+      }
+      productsByCategory.get(category).push(product);
+    });
+
+    const categoryItems = [...productsByCategory.values()]
+      .slice(0, 8)
+      .map((categoryProducts) => categoryProducts[0]);
+    const featuredIds = new Set(categoryItems.map((product) => product.id));
+
+    shuffledProducts.forEach((product) => {
+      if (categoryItems.length >= 8) return;
+      if (!featuredIds.has(product.id)) {
+        categoryItems.push(product);
+        featuredIds.add(product.id);
+      }
+    });
+
+    return categoryItems;
+  }, [products]);
 
   const toggleFaqs = (event) => {
     event.preventDefault();
@@ -42,7 +79,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     let isCurrent = true;
-    axios.get(`${BACKEND_URL}/api/marketplace/products`, {
+    api.get(`${BACKEND_URL}/api/marketplace/products`, {
       headers: { 'ngrok-skip-browser-warning': 'true' }
     })
       .then((response) => {
@@ -81,6 +118,7 @@ export default function LandingPage() {
   }, [isCartOpen]);
 
   const addToCart = (product) => {
+    if (product.isAvailable === false) return;
     setCartItems((items) => {
       const existingItem = items.find((item) => item.id === product.id);
       if (existingItem) {
@@ -1361,7 +1399,7 @@ export default function LandingPage() {
               <p role="alert">{productsError}</p>
             ) : products.length === 0 ? (
               <p>No products are currently listed by approved vendors.</p>
-            ) : products.map((prod) => (
+            ) : randomFeaturedProducts.map((prod) => (
               <div key={prod.id} style={styles.productCard}>
                 <div style={{ ...styles.productImage, backgroundColor: '#f1f5f9' }}>
                   {prod.imageUrl && (
@@ -1392,10 +1430,14 @@ export default function LandingPage() {
                     </div>
                     <button
                       type="button"
+                      disabled={prod.isAvailable === false}
                       onClick={() => addToCart(prod)}
-                      style={styles.addCartBtn}
+                      style={{
+                        ...styles.addCartBtn,
+                        ...(prod.isAvailable === false ? { opacity: 0.55, cursor: 'not-allowed' } : {})
+                      }}
                     >
-                      + Add
+                      {prod.isAvailable === false ? 'Not available' : '+ Add'}
                     </button>
                   </div>
                 </div>
