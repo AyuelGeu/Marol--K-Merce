@@ -7,7 +7,7 @@ import Register from '../Auth/Register';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 const BANNERS = [
-  { title: "One marketplace. Many independent stores! 👌", subtitle: "Discover products from approved K-Merce vendors and shop from the stores behind them.", badge: "Welcome to K-Merce", bg: "linear-gradient(135deg, #312E81 0%, #1E1B4B 100%)" },
+  { title: "One marketplace. Many independent stores!", subtitle: "Discover products from approved K-Merce vendors and shop from the stores behind them.", badge: "Welcome to K-Merce", bg: "linear-gradient(135deg, #312E81 0%, #1E1B4B 100%)" },
   { title: "Shop, sell, and manage in one place!", subtitle: "A connected marketplace with customer accounts, vendor workspaces, and tools for administrators.", badge: "Made for local commerce", bg: "linear-gradient(135deg, #065F46 0%, #064E3B 100%)" },
 ];
 
