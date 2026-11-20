@@ -165,7 +165,129 @@ const sendPaymentReceiptEmail = async (email, receipt) => {
   }
 };
 
+const sendDeliveryConfirmationEmail = async (email, confirmation) => {
+  const deliveredAt = new Date(confirmation.deliveredAt).toLocaleString('en-KE', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+  const itemText = confirmation.items.map((item) =>
+    `${item.productName} × ${item.quantity}`
+  ).join('\n');
+  const itemRows = confirmation.items.map((item) =>
+    `<li style="margin:0 0 8px;color:#374151;">${escapeHtml(item.productName)} × ${item.quantity}</li>`
+  ).join('');
+
+  try {
+    await transporter.sendMail({
+      from: `K-Merce Orders <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Your K-Merce order has been delivered',
+      text: [
+        `Hello ${confirmation.customerName || 'Customer'},`,
+        '',
+        `Your order from ${confirmation.storeName} has been delivered.`,
+        `Order reference: ${confirmation.orderId}`,
+        `Delivered on: ${deliveredAt}`,
+        '',
+        'Delivered items:',
+        itemText,
+        '',
+        'Thank you for shopping with K-Merce.'
+      ].join('\n'),
+      html: emailWrapper(`
+        <h2 style="margin:0 0 16px;font-size:28px;color:#111827;line-height:1.2;">Your order has been delivered</h2>
+        <p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#374151;">Hello ${escapeHtml(confirmation.customerName || 'Customer')}, your order from ${escapeHtml(confirmation.storeName)} has been delivered.</p>
+        <p style="margin:0 0 8px;font-size:14px;color:#4b5563;"><strong>Order reference:</strong> ${escapeHtml(confirmation.orderId)}</p>
+        <p style="margin:0 0 20px;font-size:14px;color:#4b5563;"><strong>Delivered on:</strong> ${escapeHtml(deliveredAt)}</p>
+        <h3 style="margin:0 0 12px;font-size:18px;color:#111827;">Delivered items</h3>
+        <ul style="margin:0 0 20px;padding-left:22px;">${itemRows}</ul>
+        <p style="margin:0;font-size:15px;line-height:1.7;color:#4b5563;">Thank you for shopping with K-Merce.</p>
+      `),
+      attachments: brandLogoAttachments()
+    });
+  } catch (error) {
+    console.error('Error sending delivery confirmation email:', error);
+    throw new Error('Could not send delivery confirmation email', { cause: error });
+  }
+};
+
+const sendVendorDailySalesEmail = async (email, summary) => {
+  const formatAmount = (amount) => `KSh ${Number(amount).toLocaleString('en-KE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+  const productRows = summary.products.map((product) => (
+    `<tr><td>${escapeHtml(product.productName)}</td><td>${product.unitsSold}</td>` +
+    `<td>${formatAmount(product.sales)}</td><td>${product.remainingStock ?? 'Unavailable'}</td></tr>`
+  )).join('');
+  const productText = summary.products.length
+    ? summary.products.map((product) => (
+      `${product.productName}: ${product.unitsSold} sold, ${formatAmount(product.sales)} sales, ` +
+      `${product.remainingStock ?? 'stock unavailable'} remaining`
+    )).join('\n')
+    : 'No products are currently listed in your store.';
+  const outOfStockProducts = summary.products.filter((product) => product.remainingStock === 0);
+  const outOfStockText = outOfStockProducts.length
+    ? `Out of stock: ${outOfStockProducts.map((product) => product.productName).join(', ')}`
+    : 'No products are currently out of stock.';
+  const productTableRows = productRows || (
+    '<tr><td colspan="4" style="padding:12px 14px;color:#64748b;">No products are currently listed in your store.</td></tr>'
+  );
+
+  try {
+    await transporter.sendMail({
+      from: `K-Merce Sales <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: `Daily sales and stock summary - ${summary.dateLabel}`,
+      text: [
+        `Hello ${summary.vendorName},`,
+        '',
+        `Daily sales and inventory summary for ${summary.dateLabel} (${summary.storeName})`,
+        `Total sales: ${formatAmount(summary.totalSales)}`,
+        `Orders: ${summary.orderCount}`,
+        `Units sold: ${summary.unitsSold}`,
+        '',
+        'Product sales and remaining stock:',
+        productText,
+        '',
+        outOfStockText
+      ].join('\n'),
+      html: emailWrapper(`
+        <h2 style="margin:0 0 12px;font-size:26px;color:#111827;line-height:1.2;">Daily sales and stock summary</h2>
+        <p style="margin:0 0 20px;font-size:15px;line-height:1.7;color:#4b5563;">Hello ${escapeHtml(summary.vendorName)}, here is your store summary for ${escapeHtml(summary.dateLabel)}.</p>
+        <p style="margin:0 0 20px;font-size:14px;color:#4b5563;"><strong>Store:</strong> ${escapeHtml(summary.storeName)}</p>
+        <table style="border-collapse:collapse;width:100%;margin:0 0 24px;background:#f8fafc;border:1px solid #e2e8f0;">
+          <tbody>
+            <tr><th align="left" style="padding:12px 14px;border-bottom:1px solid #e2e8f0;color:#475569;">Total sales</th><td style="padding:12px 14px;border-bottom:1px solid #e2e8f0;color:#0f172a;font-weight:700;">${formatAmount(summary.totalSales)}</td></tr>
+            <tr><th align="left" style="padding:12px 14px;border-bottom:1px solid #e2e8f0;color:#475569;">Orders</th><td style="padding:12px 14px;border-bottom:1px solid #e2e8f0;color:#0f172a;">${summary.orderCount}</td></tr>
+            <tr><th align="left" style="padding:12px 14px;color:#475569;">Units sold</th><td style="padding:12px 14px;color:#0f172a;">${summary.unitsSold}</td></tr>
+          </tbody>
+        </table>
+        <h3 style="margin:0 0 12px;font-size:18px;color:#111827;">Product sales and remaining stock</h3>
+        <table style="border-collapse:collapse;width:100%;background:#ffffff;border:1px solid #e2e8f0;">
+          <thead>
+            <tr style="background:#eff6ff;">
+              <th align="left" style="padding:11px 12px;color:#1e3a8a;font-size:12px;">Product</th>
+              <th align="right" style="padding:11px 12px;color:#1e3a8a;font-size:12px;">Units sold</th>
+              <th align="right" style="padding:11px 12px;color:#1e3a8a;font-size:12px;">Sales</th>
+              <th align="right" style="padding:11px 12px;color:#1e3a8a;font-size:12px;">Stock left</th>
+            </tr>
+          </thead>
+          <tbody>${productTableRows}</tbody>
+        </table>
+        <p style="margin:20px 0 0;font-size:14px;line-height:1.6;color:#4b5563;"><strong>Out of stock:</strong> ${outOfStockProducts.length ? escapeHtml(outOfStockProducts.map((product) => product.productName).join(', ')) : 'None'}</p>
+      `),
+      attachments: brandLogoAttachments()
+    });
+  } catch (error) {
+    console.error('Error sending vendor daily sales email:', error);
+    throw new Error('Could not send vendor daily sales email', { cause: error });
+  }
+};
+
 module.exports = sendOTPEmail;
 module.exports.sendOTPEmail = sendOTPEmail;
 module.exports.sendPasswordResetEmail = sendPasswordResetEmail;
 module.exports.sendPaymentReceiptEmail = sendPaymentReceiptEmail;
+module.exports.sendDeliveryConfirmationEmail = sendDeliveryConfirmationEmail;
+module.exports.sendVendorDailySalesEmail = sendVendorDailySalesEmail;

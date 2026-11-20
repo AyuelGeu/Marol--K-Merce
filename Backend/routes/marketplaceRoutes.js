@@ -6,6 +6,7 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Payment = require('../models/Payment');
 const createPaidOrder = require('../utils/createPaidOrder');
+const { sendDeliveryConfirmationEmail } = require('../utils/sendEmail');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const uploadProductImage = require('../middleware/productImageUpload');
 
@@ -425,30 +426,97 @@ router.get('/orders/vendor', protect, authorize('vendor'), async (req, res) => {
             .populate('customer', 'name email')
             .sort({ createdAt: -1 });
 
-        return res.status(200).json(orders.map((order) => ({
-            id: order._id,
-            createdAt: order.createdAt,
-            status: order.status,
-            customer: {
-                name: order.customer?.name || 'Customer',
-                email: order.customer?.email || ''
-            },
-            items: order.items
-                .filter((item) => item.vendor.equals(req.user._id))
-                .map((item) => ({
+        return res.status(200).json(orders.map((order) => {
+            const vendorItems = order.items.filter((item) => item.vendor.equals(req.user._id));
+            return {
+                id: order._id,
+                createdAt: order.createdAt,
+                status: order.status,
+                deliveryStatus: vendorItems.every((item) => item.deliveryStatus === 'delivered')
+                    ? 'delivered'
+                    : 'pending',
+                customer: {
+                    name: order.customer?.name || 'Customer',
+                    email: order.customer?.email || ''
+                },
+                items: vendorItems.map((item) => ({
                     productName: item.productName,
                     storeName: item.storeName,
                     unitPrice: item.unitPrice,
-                    quantity: item.quantity
+                    quantity: item.quantity,
+                    deliveryStatus: item.deliveryStatus,
+                    deliveredAt: item.deliveredAt
                 })),
-            total: Number(order.items
-                .filter((item) => item.vendor.equals(req.user._id))
-                .reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
-                .toFixed(2))
-        })));
+                total: Number(vendorItems
+                    .reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
+                    .toFixed(2))
+            };
+        }));
     } catch (error) {
         console.error('Vendor order listing error:', error);
         return res.status(500).json({ message: 'Unable to load your orders' });
+    }
+});
+
+router.put('/orders/:orderId/deliver', protect, authorize('vendor'), async (req, res) => {
+    if (!mongoose.Types.ObjectId.isValid(req.params.orderId)) {
+        return res.status(400).json({ message: 'Invalid order ID.' });
+    }
+
+    try {
+        const order = await Order.findOne({
+            _id: req.params.orderId,
+            'items.vendor': req.user._id
+        }).populate('customer', 'name email');
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found for this vendor.' });
+        }
+        if (order.status === 'cancelled') {
+            return res.status(409).json({ message: 'A cancelled order cannot be marked as delivered.' });
+        }
+
+        const vendorItems = order.items.filter((item) => item.vendor.equals(req.user._id));
+        const undeliveredItems = vendorItems.filter((item) => item.deliveryStatus !== 'delivered');
+        if (undeliveredItems.length === 0) {
+            return res.status(409).json({ message: 'Your items in this order are already marked as delivered.' });
+        }
+        if (!order.customer?.email) {
+            return res.status(422).json({ message: 'The customer does not have an email address for delivery confirmation.' });
+        }
+
+        const deliveredAt = new Date();
+        await sendDeliveryConfirmationEmail(order.customer.email, {
+            customerName: order.customer.name,
+            orderId: order._id.toString(),
+            storeName: undeliveredItems[0].storeName,
+            items: undeliveredItems.map((item) => ({
+                productName: item.productName,
+                quantity: item.quantity
+            })),
+            deliveredAt
+        });
+
+        undeliveredItems.forEach((item) => {
+            item.deliveryStatus = 'delivered';
+            item.deliveredAt = deliveredAt;
+        });
+        order.status = order.items.every((item) => item.deliveryStatus === 'delivered')
+            ? 'completed'
+            : 'processing';
+        await order.save();
+
+        return res.status(200).json({
+            id: order._id,
+            status: order.status,
+            deliveryStatus: 'delivered',
+            deliveredAt
+        });
+    } catch (error) {
+        console.error('Vendor delivery confirmation error:', error);
+        return res.status(500).json({
+            message: 'Unable to confirm delivery and send the customer email.'
+        });
     }
 });
 

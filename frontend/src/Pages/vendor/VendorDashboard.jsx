@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './RoleDashboard.css';
@@ -35,6 +35,8 @@ export default function VendorDashboard() {
   const [orders, setOrders] = useState([]);
   const [productsError, setProductsError] = useState('');
   const [ordersError, setOrdersError] = useState('');
+  const [deliveryErrors, setDeliveryErrors] = useState({});
+  const [deliveringOrderId, setDeliveringOrderId] = useState('');
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [isPublishingProduct, setIsPublishingProduct] = useState(false);
@@ -69,8 +71,61 @@ export default function VendorDashboard() {
     vendorProfile.storeName?.trim()
   );
   const priorityOrders = [...orders]
+    .filter((order) => order.deliveryStatus !== 'delivered' && order.status !== 'cancelled')
     .sort((firstOrder, secondOrder) => Number(secondOrder.total) - Number(firstOrder.total))
     .slice(0, 3);
+  const dailySales = useMemo(() => {
+    const days = Array.from({ length: 7 }, (_, index) => {
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+      date.setDate(date.getDate() - (6 - index));
+      const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+      return {
+        key,
+        label: date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }),
+        units: 0
+      };
+    });
+    const daysByKey = new Map(days.map((day) => [day.key, day]));
+    const today = days[days.length - 1];
+    const productsSoldToday = new Map();
+
+    orders.forEach((order) => {
+      if (order.status === 'cancelled') return;
+
+      const orderDate = new Date(order.createdAt);
+      if (Number.isNaN(orderDate.getTime())) return;
+      const orderKey = `${orderDate.getFullYear()}-${orderDate.getMonth()}-${orderDate.getDate()}`;
+      const day = daysByKey.get(orderKey);
+      if (!day) return;
+
+      (order.items || []).forEach((item) => {
+        const quantity = Number(item.quantity);
+        if (!Number.isFinite(quantity) || quantity <= 0) return;
+
+        day.units += quantity;
+        if (orderKey === today.key) {
+          const productName = item.productName || 'Product';
+          productsSoldToday.set(productName, (productsSoldToday.get(productName) || 0) + quantity);
+        }
+      });
+    });
+
+    return {
+      days,
+      todayUnits: today.units,
+      todayProducts: [...productsSoldToday.entries()]
+        .map(([productName, quantity]) => ({ productName, quantity }))
+        .sort((firstProduct, secondProduct) => secondProduct.quantity - firstProduct.quantity)
+    };
+  }, [orders]);
+  const salesChartMax = Math.max(4, Math.ceil(Math.max(...dailySales.days.map((day) => day.units)) / 4) * 4);
+  const salesChartTop = 20;
+  const salesChartLeft = 44;
+  const salesChartPlotWidth = 644;
+  const salesChartPlotHeight = 180;
+  const salesChartBase = salesChartTop + salesChartPlotHeight;
+  const salesChartBandWidth = salesChartPlotWidth / dailySales.days.length;
 
   useEffect(() => {
     let isCurrent = true;
@@ -119,6 +174,36 @@ export default function VendorDashboard() {
       isCurrent = false;
     };
   }, []);
+
+    const confirmDelivery = async (orderId) => {
+      setDeliveringOrderId(orderId);
+      setDeliveryErrors((errors) => ({ ...errors, [orderId]: '' }));
+      try {
+        const response = await axios.put(
+          `${BACKEND_URL}/api/marketplace/orders/${orderId}/deliver`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('jwt_token')}`,
+              'ngrok-skip-browser-warning': 'true'
+            },
+            withCredentials: true
+          }
+        );
+        setOrders((currentOrders) => currentOrders.map((order) => (
+          order.id === orderId
+            ? { ...order, status: response.data.status, deliveryStatus: response.data.deliveryStatus }
+            : order
+        )));
+      } catch (error) {
+        setDeliveryErrors((errors) => ({
+          ...errors,
+          [orderId]: error.response?.data?.message || 'Unable to confirm delivery and email the customer.'
+        }));
+      } finally {
+        setDeliveringOrderId('');
+      }
+    };
 
   const updateProductForm = (event) => {
     const { name, value } = event.target;
@@ -596,6 +681,88 @@ export default function VendorDashboard() {
 
         .vendor-workspace .vendor-order-notifications {
           background: linear-gradient(135deg, #fff 0%, #fbfefc 100%);
+        }
+
+        .vendor-workspace .vendor-daily-sales-content {
+          display: grid;
+          grid-template-columns: minmax(180px, .7fr) minmax(0, 1.3fr);
+          gap: 20px;
+          padding: 0 24px 23px;
+        }
+
+        .vendor-workspace .vendor-sales-today,
+        .vendor-workspace .vendor-sales-history {
+          padding: 17px;
+          border: 1px solid #e5eee8;
+          border-radius: 12px;
+          background: #fcfefc;
+        }
+
+        .vendor-workspace .vendor-sales-today > span,
+        .vendor-workspace .vendor-sales-history > h3 {
+          color: #71867b;
+          font-size: 10px;
+          font-weight: 650;
+          letter-spacing: .08em;
+          text-transform: uppercase;
+        }
+
+        .vendor-workspace .vendor-sales-today > strong {
+          display: block;
+          margin: 8px 0 14px;
+          color: #1d6b49;
+          font-size: 30px;
+          line-height: 1;
+        }
+
+        .vendor-workspace .vendor-sales-today > strong small {
+          margin-left: 6px;
+          color: #71867b;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .vendor-workspace .vendor-sales-products {
+          display: grid;
+          gap: 9px;
+          margin: 0;
+          padding: 0;
+          list-style: none;
+        }
+
+        .vendor-workspace .vendor-sales-products li {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          color: #587267;
+          font-size: 11px;
+        }
+
+        .vendor-workspace .vendor-sales-products strong {
+          color: #254438;
+          white-space: nowrap;
+        }
+
+        .vendor-workspace .vendor-sales-empty {
+          margin: 0;
+          color: #84958d;
+          font-size: 11px;
+        }
+
+        .vendor-workspace .vendor-sales-history > h3 {
+          margin: 0 0 14px;
+        }
+
+        .vendor-workspace .vendor-sales-chart {
+          width: 100%;
+          min-width: 0;
+        }
+
+        .vendor-workspace .vendor-sales-chart svg {
+          display: block;
+          width: 100%;
+          height: auto;
         }
 
         .vendor-workspace .vendor-priority-link {
@@ -1094,6 +1261,12 @@ export default function VendorDashboard() {
             padding-left: 16px;
           }
 
+          .vendor-workspace .vendor-daily-sales-content {
+            grid-template-columns: 1fr;
+            padding-right: 16px;
+            padding-left: 16px;
+          }
+
           .vendor-workspace .vendor-priority-item {
             grid-template-columns: auto minmax(0, 1fr);
           }
@@ -1203,12 +1376,118 @@ export default function VendorDashboard() {
             </article>
           </section>
 
+          <section className="workspace-panel vendor-daily-sales" aria-label="Daily product sales">
+            <div className="workspace-panel-heading">
+              <div>
+                <div className="workspace-eyebrow">SALES TRACKING</div>
+                <h2>Products sold per day</h2>
+                <p>Daily product quantities from paid orders, excluding cancellations.</p>
+              </div>
+              <span className="workspace-status-pill is-approved">Today</span>
+            </div>
+            {ordersError ? (
+              <p className="vendor-data-error" role="alert">{ordersError}</p>
+            ) : isLoadingOrders ? (
+              <p className="vendor-data-state">Loading sales data…</p>
+            ) : (
+              <div className="vendor-daily-sales-content">
+                <div className="vendor-sales-today">
+                  <span>Units sold today</span>
+                  <strong>{dailySales.todayUnits}<small>{dailySales.todayUnits === 1 ? 'unit' : 'units'}</small></strong>
+                  {dailySales.todayProducts.length > 0 ? (
+                    <ul className="vendor-sales-products">
+                      {dailySales.todayProducts.map((product) => (
+                        <li key={product.productName}>
+                          <span>{product.productName}</span>
+                          <strong>{product.quantity} sold</strong>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="vendor-sales-empty">No products sold today.</p>
+                  )}
+                </div>
+                <div className="vendor-sales-history">
+                  <h3>Last 7 days</h3>
+                  <div className="vendor-sales-chart">
+                    <svg viewBox="0 0 700 260" role="img" aria-label="Units sold each day over the last seven days">
+                      <title>Products sold over the last seven days</title>
+                      {Array.from({ length: 5 }, (_, index) => {
+                        const value = salesChartMax * (1 - index / 4);
+                        const y = salesChartTop + (salesChartPlotHeight * index) / 4;
+                        return (
+                          <g key={value}>
+                            <line
+                              x1={salesChartLeft}
+                              x2={688}
+                              y1={y}
+                              y2={y}
+                              stroke="#e8f0ea"
+                              strokeDasharray="3 3"
+                            />
+                            <text
+                              x={salesChartLeft - 8}
+                              y={y + 3}
+                              textAnchor="end"
+                              fill="#71867b"
+                              fontSize="10"
+                            >
+                              {value}
+                            </text>
+                          </g>
+                        );
+                      })}
+                      {dailySales.days.map((day, index) => {
+                        const barHeight = (day.units / salesChartMax) * salesChartPlotHeight;
+                        const barX = salesChartLeft + index * salesChartBandWidth + (salesChartBandWidth - 44) / 2;
+                        const barY = salesChartBase - barHeight;
+                        const centerX = barX + 22;
+                        return (
+                          <g key={day.key}>
+                            <title>{`${day.label}: ${day.units} ${day.units === 1 ? 'unit' : 'units'} sold`}</title>
+                            <rect
+                              x={barX}
+                              y={barY}
+                              width="44"
+                              height={barHeight}
+                              rx="5"
+                              fill="#43ae7d"
+                            />
+                            <text
+                              x={centerX}
+                              y={Math.max(salesChartTop - 2, barY - 8)}
+                              textAnchor="middle"
+                              fill="#254438"
+                              fontSize="11"
+                              fontWeight="600"
+                            >
+                              {day.units}
+                            </text>
+                            <text
+                              x={centerX}
+                              y={salesChartBase + 24}
+                              textAnchor="middle"
+                              fill="#71867b"
+                              fontSize="11"
+                            >
+                              {day.label}
+                            </text>
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
           <section className="workspace-panel vendor-order-notifications" aria-label="Order priority notifications">
             <div className="workspace-panel-heading">
               <div>
                 <div className="workspace-eyebrow">ORDER ACTIVITY</div>
                 <h2>Order priority notifications</h2>
-                <p>Orders with the highest value are listed first.</p>
+                <p>Undelivered orders with the highest value are listed first.</p>
               </div>
               <Link className="vendor-priority-link" to="/vendor/orders">View all orders</Link>
             </div>
@@ -1217,7 +1496,7 @@ export default function VendorDashboard() {
             ) : isLoadingOrders ? (
               <p className="vendor-data-state">Loading order notifications…</p>
             ) : priorityOrders.length === 0 ? (
-              <p className="vendor-data-state">No customer orders yet. New orders will appear here.</p>
+              <p className="vendor-data-state">No undelivered orders right now.</p>
             ) : (
               <ol className="vendor-priority-list">
                 {priorityOrders.map((order, index) => (
@@ -1516,6 +1795,29 @@ export default function VendorDashboard() {
                       ))}
                     </div>
                     <div className="vendor-order-total"><span>Your order total</span><strong>KSh {order.total.toFixed(2)}</strong></div>
+                    <div className="vendor-order-delivery">
+                      {order.deliveryStatus === 'delivered' ? (
+                        <p className="vendor-delivery-message is-success" role="status">
+                          Delivered — confirmation email sent to the customer.
+                        </p>
+                      ) : order.status === 'cancelled' ? (
+                        <p className="vendor-delivery-message">Cancelled orders cannot be marked as delivered.</p>
+                      ) : (
+                        <button
+                          className="vendor-delivery-button"
+                          type="button"
+                          onClick={() => confirmDelivery(order.id)}
+                          disabled={Boolean(deliveringOrderId)}
+                        >
+                          {deliveringOrderId === order.id ? 'Sending confirmation…' : 'Mark delivered & email customer'}
+                        </button>
+                      )}
+                      {deliveryErrors[order.id] && (
+                        <p className="vendor-delivery-message is-error" role="alert">
+                          {deliveryErrors[order.id]}
+                        </p>
+                      )}
+                    </div>
                   </article>
                 ))}
               </div>

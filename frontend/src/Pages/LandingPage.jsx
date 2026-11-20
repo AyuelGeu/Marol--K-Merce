@@ -4,9 +4,6 @@ import axios from 'axios';
 import Login from '../Auth/Login';
 import Register from '../Auth/Register';
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://192.168.1.187:5173/'
-});
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
 const BANNERS = [
@@ -79,7 +76,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     let isCurrent = true;
-    api.get(`${BACKEND_URL}/api/marketplace/products`, {
+    axios.get(`${BACKEND_URL}/api/marketplace/products`, {
       headers: { 'ngrok-skip-browser-warning': 'true' }
     })
       .then((response) => {

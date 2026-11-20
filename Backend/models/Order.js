@@ -29,6 +29,15 @@ const orderItemSchema = new mongoose.Schema({
         type: Number,
         required: true,
         min: 1
+    },
+    deliveryStatus: {
+        type: String,
+        enum: ['pending', 'delivered'],
+        default: 'pending'
+    },
+    deliveredAt: {
+        type: Date,
+        default: null
     }
 }, { _id: false });
 

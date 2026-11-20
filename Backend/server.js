@@ -24,9 +24,9 @@ const Staff = require('./models/Users');
 const authRoutes = require('./routes/authRoutes');
 const marketplaceRoutes = require('./routes/marketplaceRoutes');
 const mpesaRoutes = require('./routes/mpesaRoutes');
+const scheduleDailyVendorSalesDigest = require('./utils/vendorSalesDigest');
 const app = express();
 
-app.use(cors()); // Allows all origins during development
 app.use(express.json());
 
 // --- CRITICAL FIX FOR NGROK ---
@@ -436,23 +436,19 @@ app.use((err, req, res, next) => {
     });
 });
 
-// --- Server Initialization ---
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log('Server running on port ${PORT}');
-});
-
 const startServer = async() => {
     await connectDB();
     await new Promise((resolve, reject) => {
-        const server = app.listen(PORT, '0.0.0.0', () => {
+        const server = app.listen(PORT, process.env.HOST || '127.0.0.1', () => {
             console.log(`[Server] Running in ${process.env.NODE_ENV} mode on port ${PORT}`);
             resolve();
         });
         server.once('error', reject);
     });
+    scheduleDailyVendorSalesDigest();
 };
 
+const PORT = process.env.PORT || 5000;
 startServer().catch(error => {
     console.error(`[Server] Startup failed: ${error.message}`);
     process.exit(1);

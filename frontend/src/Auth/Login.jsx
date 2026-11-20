@@ -79,6 +79,7 @@ export default function Login({ isModal = false, onClose }) {
 
   return (
     <div
+      className="login-page"
       onClick={isModal ? (event) => {
         if (event.target === event.currentTarget) onClose?.();
       } : undefined}
@@ -99,6 +100,9 @@ export default function Login({ isModal = false, onClose }) {
       boxSizing: 'border-box'
     }}>
       <style>{`
+        .login-page, .login-page * {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+        }
         @keyframes floatGlow {
           0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
           50% { transform: translate(30px, -20px) scale(1.1); opacity: 0.8; }

@@ -1453,6 +1453,50 @@
   font-size: 15px;
 }
 
+.vendor-order-delivery {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.vendor-delivery-button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #287967;
+  border-radius: 8px;
+  background: #287967;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s ease, transform .15s ease;
+}
+
+.vendor-delivery-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #1f6656;
+}
+
+.vendor-delivery-button:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.vendor-delivery-message {
+  margin: 0;
+  font-size: 11px;
+}
+
+.vendor-delivery-message.is-success {
+  color: #287967;
+}
+
+.vendor-delivery-message.is-error {
+  color: #b42318;
+}
+
 .vendor-order-notifications .workspace-panel-heading {
   align-items: center;
 }
