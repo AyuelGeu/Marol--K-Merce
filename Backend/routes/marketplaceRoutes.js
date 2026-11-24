@@ -5,6 +5,7 @@ const path = require('path');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Payment = require('../models/Payment');
+const PlatformSettings = require('../models/PlatformSettings');
 const createPaidOrder = require('../utils/createPaidOrder');
 const { sendDeliveryConfirmationEmail } = require('../utils/sendEmail');
 const { protect, authorize } = require('../middleware/authMiddleware');
@@ -12,6 +13,47 @@ const uploadProductImage = require('../middleware/productImageUpload');
 
 const router = express.Router();
 const uploadsDirectory = path.join(__dirname, '..', 'uploads');
+
+const getAdminSettingsData = async (settings) => {
+    const now = new Date();
+    const start = new Date(now);
+    start.setUTCHours(0, 0, 0, 0);
+    start.setUTCDate(start.getUTCDate() - 29);
+    const dailySales = await Payment.aggregate([
+        { $match: { status: 'paid' } },
+        { $addFields: { salesDate: { $ifNull: ['$transactionDate', '$createdAt'] } } },
+        { $match: { salesDate: { $gte: start, $lte: now } } },
+        { $unwind: '$items' },
+        {
+            $group: {
+                _id: {
+                    $dateToString: {
+                        format: '%Y-%m-%d',
+                        date: '$salesDate',
+                        timezone: 'UTC'
+                    }
+                },
+                grossSales: {
+                    $sum: { $multiply: ['$items.unitPrice', '$items.quantity'] }
+                }
+            }
+        },
+        { $sort: { _id: 1 } }
+    ]);
+    const commissionRate = settings?.dailyCommissionPercentage || 0;
+
+    return {
+        dailyCommissionPercentage: commissionRate,
+        payoutPhoneNumber: settings?.payoutPhoneNumber || '',
+        updatedAt: settings?.updatedAt || null,
+        transfersEnabled: false,
+        dailyCommission: dailySales.map((sale) => ({
+            date: sale._id,
+            grossSales: Number(sale.grossSales.toFixed(2)),
+            commissionAmount: Number((sale.grossSales * commissionRate / 100).toFixed(2))
+        }))
+    };
+};
 
 const removeUploadedImage = async (file) => {
     if (!file) return;
@@ -231,8 +273,71 @@ router.post('/orders', protect, authorize('customer'), async (req, res) => {
     }
 });
 
+router.get('/admin/settings', protect, authorize('admin'), async (req, res) => {
+    try {
+        const settings = await PlatformSettings.findOne({ key: 'platform' }).lean();
+        return res.status(200).json(await getAdminSettingsData(settings));
+    } catch (error) {
+        console.error('Admin settings load error:', error);
+        return res.status(500).json({ message: 'Unable to load admin settings.' });
+    }
+});
+
+router.put('/admin/settings', protect, authorize('admin'), async (req, res) => {
+    const commissionPercentage = Number(req.body?.dailyCommissionPercentage);
+    if (!Number.isFinite(commissionPercentage) ||
+        commissionPercentage < 0 ||
+        commissionPercentage > 100 ||
+        Math.round(commissionPercentage * 100) / 100 !== commissionPercentage) {
+        return res.status(400).json({
+            message: 'Commission percentage must be between 0 and 100 with up to two decimal places.'
+        });
+    }
+
+    const phoneDigits = String(req.body?.payoutPhoneNumber || '').replace(/\D/g, '');
+    const payoutPhoneNumber = phoneDigits.startsWith('0')
+        ? `254${phoneDigits.slice(1)}`
+        : phoneDigits.startsWith('7') || phoneDigits.startsWith('1')
+            ? `254${phoneDigits}`
+            : phoneDigits;
+    if (payoutPhoneNumber && !/^254[17]\d{8}$/.test(payoutPhoneNumber)) {
+        return res.status(400).json({
+            message: 'Enter a valid Kenyan M-Pesa phone number or leave it blank.'
+        });
+    }
+
+    try {
+        const settings = await PlatformSettings.findOneAndUpdate(
+            { key: 'platform' },
+            {
+                $set: {
+                    dailyCommissionPercentage: commissionPercentage,
+                    payoutPhoneNumber,
+                    updatedBy: req.user._id
+                },
+                $setOnInsert: { key: 'platform' }
+            },
+            {
+                upsert: true,
+                returnDocument: 'after',
+                runValidators: true,
+                setDefaultsOnInsert: true
+            }
+        );
+        return res.status(200).json(await getAdminSettingsData(settings));
+    } catch (error) {
+        console.error('Admin settings update error:', error);
+        return res.status(500).json({ message: 'Unable to save admin settings.' });
+    }
+});
+
 router.get('/admin/payments', protect, authorize('admin'), async (req, res) => {
     try {
+        const salesTrendEnd = new Date();
+        const salesTrendStart = new Date(salesTrendEnd);
+        salesTrendStart.setUTCHours(0, 0, 0, 0);
+        salesTrendStart.setUTCDate(salesTrendStart.getUTCDate() - 29);
+
         const vendorTotals = await Payment.aggregate([
             { $unwind: '$items' },
             {
@@ -321,6 +426,58 @@ router.get('/admin/payments', protect, authorize('admin'), async (req, res) => {
             { $sort: { paidAmount: -1, name: 1 } }
         ]);
 
+        const salesTrend = await Payment.aggregate([
+            { $match: { status: 'paid' } },
+            { $addFields: { salesDate: { $ifNull: ['$transactionDate', '$createdAt'] } } },
+            { $match: { salesDate: { $gte: salesTrendStart, $lte: salesTrendEnd } } },
+            { $unwind: '$items' },
+            {
+                $group: {
+                    _id: {
+                        date: {
+                            $dateToString: {
+                                format: '%Y-%m-%d',
+                                date: '$salesDate',
+                                timezone: 'UTC'
+                            }
+                        },
+                        vendor: '$items.vendor',
+                        storeName: '$items.storeName'
+                    },
+                    amount: {
+                        $sum: { $multiply: ['$items.unitPrice', '$items.quantity'] }
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'staffs',
+                    localField: '_id.vendor',
+                    foreignField: '_id',
+                    as: 'vendor'
+                }
+            },
+            { $unwind: '$vendor' },
+            { $match: { 'vendor.role': 'vendor' } },
+            {
+                $project: {
+                    _id: 0,
+                    date: '$_id.date',
+                    storeId: {
+                        $concat: [
+                            { $toString: '$_id.vendor' },
+                            ':',
+                            { $ifNull: ['$_id.storeName', 'Store'] }
+                        ]
+                    },
+                    storeName: { $ifNull: ['$_id.storeName', 'Store'] },
+                    vendorName: { $ifNull: ['$vendor.name', 'Vendor'] },
+                    amount: 1
+                }
+            },
+            { $sort: { date: 1, storeName: 1 } }
+        ]);
+
         const payments = await Payment.find()
             .sort({ createdAt: -1 })
             .limit(100)
@@ -361,7 +518,7 @@ router.get('/admin/payments', protect, authorize('admin'), async (req, res) => {
             };
         });
 
-        return res.status(200).json({ vendorTotals, recentPayments });
+        return res.status(200).json({ vendorTotals, recentPayments, salesTrend });
     } catch (error) {
         console.error('Admin payment tracking error:', error);
         return res.status(500).json({ message: 'Unable to load payment tracking data.' });

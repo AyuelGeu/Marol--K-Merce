@@ -669,6 +669,183 @@
   box-shadow: 0 6px 24px rgba(32, 40, 58, 0.045);
 }
 
+.admin-sales-trend {
+  margin-bottom: 24px;
+}
+
+.admin-sales-trend .admin-directory-heading {
+  align-items: center;
+}
+
+.admin-sales-trend .admin-refresh-button {
+  flex: 0 0 auto;
+}
+
+.admin-sales-chart-wrap {
+  height: 340px;
+  padding: 0 24px 24px 12px;
+}
+
+.admin-sales-chart-message {
+  display: flex;
+  min-height: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+  color: var(--admin-muted);
+  text-align: center;
+}
+
+.admin-sales-chart-message button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--admin-line);
+  border-radius: 8px;
+  color: var(--admin-ink);
+  background: var(--admin-surface-hover);
+  cursor: pointer;
+}
+
+.admin-settings {
+  margin-top: 24px;
+}
+
+.admin-settings-content {
+  padding: 0 32px 32px;
+}
+
+.admin-settings-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.admin-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--admin-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-settings-field input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--admin-line);
+  border-radius: 9px;
+  outline: none;
+  color: var(--admin-ink);
+  background: var(--admin-surface-hover);
+  font: inherit;
+}
+
+.admin-settings-field input:focus {
+  border-color: #b9afff;
+  box-shadow: 0 0 0 3px rgba(98, 75, 215, 0.12);
+}
+
+.admin-settings-field input:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.admin-settings-field > small {
+  color: var(--admin-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.admin-settings-input-wrap {
+  position: relative;
+}
+
+.admin-settings-input-wrap input {
+  padding-right: 42px;
+}
+
+.admin-settings-input-wrap > span {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  color: var(--admin-muted);
+  font-weight: 500;
+  transform: translateY(-50%);
+}
+
+.admin-settings-payout-note {
+  grid-column: 1 / -1;
+  padding: 13px 16px;
+  border: 1px solid rgba(227, 154, 57, .35);
+  border-radius: 9px;
+  color: #f2c987;
+  background: rgba(227, 154, 57, .08);
+  font-size: 12px;
+}
+
+.admin-settings-save {
+  min-height: 42px;
+  justify-self: start;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 9px;
+  color: #fff;
+  background: #624bd7;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-settings-save:disabled {
+  cursor: wait;
+  opacity: .6;
+}
+
+.admin-settings-message {
+  margin-bottom: 16px;
+  font-size: 12px;
+}
+
+.admin-settings-message.is-error {
+  color: #ffb4ab;
+}
+
+.admin-settings-message.is-success {
+  color: #75d5ad;
+}
+
+.admin-settings-history {
+  margin-top: 28px;
+  border-top: 1px solid var(--admin-line);
+  padding-top: 22px;
+}
+
+.admin-settings-history-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.admin-settings-history-heading h3 {
+  margin: 0;
+  color: var(--admin-ink);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.admin-settings-history-heading > span {
+  color: var(--admin-muted);
+  font-size: 11px;
+}
+
+.admin-settings-table {
+  min-width: 560px;
+}
+
 .admin-directory-heading {
   display: flex;
   align-items: flex-end;
@@ -1176,6 +1353,13 @@
   .admin-welcome { flex-direction: column; align-items: flex-start; gap: 16px; }
   .admin-refresh-button { width: 100%; }
   .admin-directory-heading { flex-direction: column; align-items: stretch; padding: 24px 20px; }
+  .admin-sales-chart-wrap { height: 300px; padding: 0 12px 18px 4px; }
+  .admin-sales-trend .admin-directory-heading { align-items: stretch; }
+  .admin-sales-trend .admin-refresh-button { width: 100%; }
+  .admin-settings-content { padding: 0 20px 24px; }
+  .admin-settings-form { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .admin-settings-payout-note { grid-column: auto; }
+  .admin-settings-history-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
   .admin-approvals { padding: 22px 16px; }
   .admin-approvals-heading { align-items: flex-start; gap: 12px; }
   .admin-approvals-heading h2 { font-size: 18px; }

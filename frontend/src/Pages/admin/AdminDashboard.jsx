@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from 'recharts';
 import './AdminDashboard.css';
 import MarketplaceChatbot from '../../components/MarketplaceChatbot';
 
@@ -11,6 +21,8 @@ const roleLabels = {
   vendor: 'Vendor',
   customer: 'Customer'
 };
+
+const salesTrendColors = ['#7c6cf0', '#25a879', '#e39a39', '#e05f72', '#3e9bc7', '#b569ce'];
 
 function getInitials(name, email) {
   const label = name && name !== 'New User' ? name : email || 'User';
@@ -47,6 +59,17 @@ export default function AdminDashboard() {
     }
   });
   const [users, setUsers] = useState([]);
+  const [salesTrend, setSalesTrend] = useState([]);
+  const [isSalesTrendLoading, setIsSalesTrendLoading] = useState(true);
+  const [salesTrendError, setSalesTrendError] = useState('');
+  const [commissionPercentage, setCommissionPercentage] = useState('0');
+  const [payoutPhoneNumber, setPayoutPhoneNumber] = useState('');
+  const [dailyCommission, setDailyCommission] = useState([]);
+  const [isSettingsLoading, setIsSettingsLoading] = useState(true);
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
+  const [isSettingsSaving, setIsSettingsSaving] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
+  const [settingsSuccess, setSettingsSuccess] = useState('');
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -177,6 +200,30 @@ export default function AdminDashboard() {
     return response.data;
   }, []);
 
+  const fetchSalesTrend = useCallback(async () => {
+    const token = localStorage.getItem('jwt_token');
+    const response = await axios.get(`${BACKEND_URL}/api/marketplace/admin/payments`, {
+      headers: {
+        Authorization: token ? 'Bearer ' + token : '',
+        'ngrok-skip-browser-warning': 'true'
+      },
+      withCredentials: true
+    });
+    return response.data.salesTrend;
+  }, []);
+
+  const fetchAdminSettings = useCallback(async () => {
+    const token = localStorage.getItem('jwt_token');
+    const response = await axios.get(`${BACKEND_URL}/api/marketplace/admin/settings`, {
+      headers: {
+        Authorization: token ? 'Bearer ' + token : '',
+        'ngrok-skip-browser-warning': 'true'
+      },
+      withCredentials: true
+    });
+    return response.data;
+  }, []);
+
   const reportLoadError = useCallback((requestError) => {
     setError(requestError.response?.data?.error || requestError.response?.data?.message || 'Unable to load the user directory.');
   }, []);
@@ -196,6 +243,100 @@ export default function AdminDashboard() {
       .catch(reportLoadError)
       .finally(() => setIsLoading(false));
   }, [fetchUsers, reportLoadError]);
+
+  const refreshSalesTrend = useCallback(() => {
+    setIsSalesTrendLoading(true);
+    setSalesTrendError('');
+    fetchSalesTrend()
+      .then(setSalesTrend)
+      .catch((requestError) => {
+        setSalesTrendError(
+          requestError.response?.data?.message || 'Unable to load the sales trend.'
+        );
+      })
+      .finally(() => setIsSalesTrendLoading(false));
+  }, [fetchSalesTrend]);
+
+  useEffect(() => {
+    let isCurrent = true;
+    fetchSalesTrend()
+      .then((trend) => {
+        if (isCurrent) setSalesTrend(trend);
+      })
+      .catch((requestError) => {
+        if (isCurrent) {
+          setSalesTrendError(
+            requestError.response?.data?.message || 'Unable to load the sales trend.'
+          );
+        }
+      })
+      .finally(() => {
+        if (isCurrent) setIsSalesTrendLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [fetchSalesTrend]);
+
+  useEffect(() => {
+    let isCurrent = true;
+    fetchAdminSettings()
+      .then((settings) => {
+        if (!isCurrent) return;
+        setCommissionPercentage(String(settings.dailyCommissionPercentage));
+        setPayoutPhoneNumber(settings.payoutPhoneNumber);
+        setDailyCommission(settings.dailyCommission);
+        setIsSettingsLoaded(true);
+      })
+      .catch((requestError) => {
+        if (isCurrent) {
+          setSettingsError(
+            requestError.response?.data?.message || 'Unable to load admin settings.'
+          );
+        }
+      })
+      .finally(() => {
+        if (isCurrent) setIsSettingsLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [fetchAdminSettings]);
+
+  const saveAdminSettings = async (event) => {
+    event.preventDefault();
+    setIsSettingsSaving(true);
+    setSettingsError('');
+    setSettingsSuccess('');
+    try {
+      const token = localStorage.getItem('jwt_token');
+      const response = await axios.put(
+        `${BACKEND_URL}/api/marketplace/admin/settings`,
+        {
+          dailyCommissionPercentage: Number(commissionPercentage),
+          payoutPhoneNumber
+        },
+        {
+          headers: {
+            Authorization: token ? 'Bearer ' + token : '',
+            'ngrok-skip-browser-warning': 'true'
+          },
+          withCredentials: true
+        }
+      );
+      setCommissionPercentage(String(response.data.dailyCommissionPercentage));
+      setPayoutPhoneNumber(response.data.payoutPhoneNumber);
+      setDailyCommission(response.data.dailyCommission);
+      setIsSettingsLoaded(true);
+      setSettingsSuccess('Commission and payout settings saved.');
+    } catch (requestError) {
+      setSettingsError(requestError.response?.data?.message || 'Unable to save admin settings.');
+    } finally {
+      setIsSettingsSaving(false);
+    }
+  };
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -297,6 +438,41 @@ export default function AdminDashboard() {
     customers: users.filter((user) => user.role === 'customer').length
   }), [users]);
 
+  const salesTrendChart = useMemo(() => {
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const days = Array.from({ length: 30 }, (_, index) => {
+      const date = new Date(today);
+      date.setUTCDate(today.getUTCDate() - (29 - index));
+      const key = date.toISOString().slice(0, 10);
+      return {
+        key,
+        label: date.toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          timeZone: 'UTC'
+        })
+      };
+    });
+    const stores = new Map();
+    salesTrend.forEach((entry) => {
+      if (!stores.has(entry.storeId)) {
+        stores.set(entry.storeId, {
+          id: entry.storeId,
+          name: `${entry.storeName || 'Store'} · ${entry.vendorName || 'Vendor'}`
+        });
+      }
+    });
+    const rows = days.map((day) => ({ date: day.label, dateKey: day.key }));
+    const rowByDate = new Map(rows.map((row) => [row.dateKey, row]));
+    salesTrend.forEach((entry) => {
+      const row = rowByDate.get(entry.date);
+      if (row) row[entry.storeId] = (row[entry.storeId] || 0) + Number(entry.amount || 0);
+    });
+
+    return { stores: [...stores.values()], rows };
+  }, [salesTrend]);
+
   const directoryUsers = useMemo(
     () => users.filter((user) => user.role !== 'customer' && user.role !== 'vendor'),
     [users]
@@ -367,6 +543,10 @@ export default function AdminDashboard() {
             <span className="admin-nav-icon">✦</span>
             Administrators
             <span className="admin-nav-count">{counts.admins}</span>
+          </a>
+          <a className="admin-nav-link" href="#settings">
+            <span className="admin-nav-icon">⚙</span>
+            Settings
           </a>
         </nav>
 
@@ -570,6 +750,72 @@ export default function AdminDashboard() {
             </article>
           </section>
 
+          <section className="admin-directory admin-sales-trend" aria-labelledby="sales-trend-title">
+            <div className="admin-directory-heading">
+              <div>
+                <div className="admin-eyebrow">REVENUE MONITORING</div>
+                <h2 id="sales-trend-title">Sales trend by store</h2>
+                <p>Daily paid sales over the past 30 days, grouped by store.</p>
+              </div>
+              <button
+                className="admin-refresh-button"
+                type="button"
+                onClick={refreshSalesTrend}
+                disabled={isSalesTrendLoading}
+              >
+                <span className={isSalesTrendLoading ? 'admin-refresh-icon is-spinning' : 'admin-refresh-icon'}>↻</span>
+                {isSalesTrendLoading ? 'Loading sales' : 'Refresh sales'}
+              </button>
+            </div>
+            <div className="admin-sales-chart-wrap">
+              {salesTrendError ? (
+                <div className="admin-sales-chart-message" role="alert">
+                  <span>{salesTrendError}</span>
+                  <button type="button" onClick={refreshSalesTrend}>Try again</button>
+                </div>
+              ) : isSalesTrendLoading ? (
+                <p className="admin-sales-chart-message">Loading sales trend…</p>
+              ) : salesTrendChart.stores.length === 0 ? (
+                <p className="admin-sales-chart-message">No paid sales have been recorded in the past 30 days.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={salesTrendChart.rows} margin={{ top: 12, right: 20, bottom: 4, left: 12 }}>
+                    <CartesianGrid stroke="#344054" strokeDasharray="3 5" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: '#9eabc0', fontSize: 11 }}
+                      axisLine={{ stroke: '#344054' }}
+                      tickLine={false}
+                      minTickGap={24}
+                    />
+                    <YAxis
+                      tick={{ fill: '#9eabc0', fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={76}
+                      tickFormatter={(value) => `KSh ${Number(value).toLocaleString()}`}
+                    />
+                    <Tooltip
+                      contentStyle={{ background: '#171e2b', border: '1px solid #344054', borderRadius: 10 }}
+                      labelStyle={{ color: '#e8edf5' }}
+                      formatter={(value, name) => [`KSh ${Number(value).toLocaleString()}`, name]}
+                    />
+                    <Legend />
+                    {salesTrendChart.stores.map((store, index) => (
+                      <Bar
+                        key={store.id}
+                        dataKey={store.id}
+                        name={store.name}
+                        fill={salesTrendColors[index % salesTrendColors.length]}
+                        radius={[4, 4, 0, 0]}
+                      />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </section>
+
           <section className="admin-directory" id="users">
             <div className="admin-directory-heading">
               <div>
@@ -659,6 +905,99 @@ export default function AdminDashboard() {
             <div className="admin-directory-footer">
               <span>Showing <strong>{filteredUsers.length}</strong> of <strong>{directoryUsers.length}</strong> accounts</span>
               <span className="admin-data-note"><span /> Live account data</span>
+            </div>
+          </section>
+
+          <section className="admin-directory admin-settings" id="settings" aria-labelledby="admin-settings-title">
+            <div className="admin-directory-heading">
+              <div>
+                <div className="admin-eyebrow">PLATFORM SETTINGS</div>
+                <h2 id="admin-settings-title">Commission &amp; payout</h2>
+                <p>Set the daily commission rate and the admin M-Pesa destination.</p>
+              </div>
+            </div>
+            <div className="admin-settings-content">
+              {settingsError && <div className="admin-settings-message is-error" role="alert">{settingsError}</div>}
+              {settingsSuccess && <div className="admin-settings-message is-success" role="status">{settingsSuccess}</div>}
+              <form className="admin-settings-form" onSubmit={saveAdminSettings}>
+                <label className="admin-settings-field">
+                  <span>Commission percentage</span>
+                  <span className="admin-settings-input-wrap">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      required
+                      value={commissionPercentage}
+                      onChange={(event) => setCommissionPercentage(event.target.value)}
+                      disabled={!isSettingsLoaded || isSettingsSaving}
+                    />
+                    <span>%</span>
+                  </span>
+                  <small>Applied to paid gross item sales, grouped by transaction day.</small>
+                </label>
+                <label className="admin-settings-field">
+                  <span>Admin M-Pesa phone number</span>
+                  <input
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="e.g. 0712345678"
+                    value={payoutPhoneNumber}
+                    onChange={(event) => setPayoutPhoneNumber(event.target.value)}
+                    disabled={!isSettingsLoaded || isSettingsSaving}
+                  />
+                  <small>Used as the intended payout destination when outbound transfers are configured.</small>
+                </label>
+                <div className="admin-settings-payout-note" role="status">
+                  Automatic transfers are disabled. Saving this destination will not send money; M-Pesa B2C payout credentials and callback configuration are not set up.
+                </div>
+                <button
+                  className="admin-settings-save"
+                  type="submit"
+                  disabled={!isSettingsLoaded || isSettingsSaving}
+                >
+                  {isSettingsLoading ? 'Loading settings…' : isSettingsSaving ? 'Saving…' : 'Save settings'}
+                </button>
+              </form>
+
+              <div className="admin-settings-history">
+                <div className="admin-settings-history-heading">
+                  <h3>Daily commission estimates</h3>
+                  <span>Past 30 days · current rate · not transferred</span>
+                </div>
+                {isSettingsLoading ? (
+                  <p className="admin-table-message">Loading commission history…</p>
+                ) : dailyCommission.length === 0 ? (
+                  <p className="admin-table-message">No paid sales have been recorded in the past 30 days.</p>
+                ) : (
+                  <div className="admin-table-wrap">
+                    <table className="admin-payment-table admin-settings-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">DATE</th>
+                          <th scope="col">PAID GROSS SALES</th>
+                          <th scope="col">ESTIMATED COMMISSION</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dailyCommission.map((day) => (
+                          <tr key={day.date}>
+                            <td>{new Date(`${day.date}T00:00:00Z`).toLocaleDateString(undefined, {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              timeZone: 'UTC'
+                            })}</td>
+                            <td className="admin-payment-amount">KSh {Number(day.grossSales).toLocaleString()}</td>
+                            <td className="admin-payment-amount">KSh {Number(day.commissionAmount).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           </section>
 
