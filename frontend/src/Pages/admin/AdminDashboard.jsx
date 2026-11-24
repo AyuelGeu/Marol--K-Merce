@@ -503,7 +503,7 @@ export default function AdminDashboard() {
       />
       <aside className="admin-sidebar">
         <a className="admin-brand" href="/admin/dashboard" aria-label="K-Merce Admin home">
-          <span className="admin-brand-mark"><img src="/brand-logo.png" alt="" /></span>
+          <span className="admin-brand-mark"><img src="/brand-logo.svg" alt="" /></span>
           <span className="admin-brand-copy">
             <strong>K-MERCE</strong>
             <small>ADMIN CONSOLE</small>

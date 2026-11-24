@@ -1267,7 +1267,7 @@ export default function LandingPage() {
         {/* 2. MAIN HEADER */}
         <header style={styles.header}>
           <div style={styles.logoGroup}>
-            <img src="/brand-logo.png" alt="" style={{ width: '58px', height: '54px', objectFit: 'contain' }} />
+            <img src="/brand-logo.svg" alt="" style={{ width: '58px', height: '54px', objectFit: 'contain' }} />
             <span style={styles.logoText}>K-Merce</span>
           </div>
 
@@ -1518,7 +1518,7 @@ export default function LandingPage() {
           <div style={styles.footerGrid}>
             <div>
               <div style={{ ...styles.logoGroup, marginBottom: '15px' }}>
-                <img src="/brand-logo.png" alt="" style={{ width: '50px', height: '46px', objectFit: 'contain' }} />
+                <img src="/brand-logo.svg" alt="" style={{ width: '50px', height: '46px', objectFit: 'contain' }} />
                 <span style={{ ...styles.logoText, color: '#FFFFFF' }}>K-Merce</span>
               </div>
               <p style={styles.footerText}>K-Merce brings shoppers and independent stores together, with dedicated tools for customers, vendors, and administrators.</p>

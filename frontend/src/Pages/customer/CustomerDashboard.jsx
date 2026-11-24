@@ -749,7 +749,7 @@ export default function CustomerDashboard() {
       `}</style>
       <aside className="workspace-sidebar">
         <Link className="workspace-brand" to="/customer/dashboard">
-          <span className="workspace-brand-mark"><img src="/brand-logo.png" alt="" /></span>
+          <span className="workspace-brand-mark"><img src="/brand-logo.svg" alt="" /></span>
           <span className="workspace-brand-copy"><strong>K-MERCE</strong><small>YOUR ACCOUNT</small></span>
         </Link>
         <div className="workspace-nav-label">YOUR ACCOUNT</div>

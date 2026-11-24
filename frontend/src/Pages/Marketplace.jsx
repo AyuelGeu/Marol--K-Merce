@@ -266,7 +266,7 @@ export default function Marketplace() {
     <main className="marketplace-page">
       <header className="marketplace-header">
         <Link className="marketplace-brand" to="/" aria-label="K-Merce home">
-          <img src="/brand-logo.png" alt="K-Merce" />
+          <img src="/brand-logo.svg" alt="K-Merce" />
         </Link>
         <nav aria-label="Marketplace navigation">
           <Link to="/login">My orders</Link>

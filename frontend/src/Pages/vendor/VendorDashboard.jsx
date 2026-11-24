@@ -1309,7 +1309,7 @@ export default function VendorDashboard() {
       `}</style>
       <aside className="workspace-sidebar">
         <Link className="workspace-brand" to="/vendor/dashboard">
-          <span className="workspace-brand-mark"><img src="/brand-logo.png" alt="" /></span>
+          <span className="workspace-brand-mark"><img src="/brand-logo.svg" alt="" /></span>
           <span className="workspace-brand-copy"><strong>K-MERCE</strong><small>SELLER WORKSPACE</small></span>
         </Link>
         <div className="workspace-nav-label">YOUR WORKSPACE</div>

@@ -94,7 +94,7 @@ export default function AdminPayments() {
     <div className="admin-shell">
       <aside className="admin-sidebar">
         <Link className="admin-brand" to="/admin/dashboard" aria-label="K-Merce Admin home">
-          <span className="admin-brand-mark"><img src="/brand-logo.png" alt="" /></span>
+          <span className="admin-brand-mark"><img src="/brand-logo.svg" alt="" /></span>
           <span className="admin-brand-copy">
             <strong>K-MERCE</strong>
             <small>ADMIN CONSOLE</small>

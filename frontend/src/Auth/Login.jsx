@@ -229,7 +229,7 @@ export default function Login({ isModal = false, onClose }) {
         
         {/* Animated Icon Header */}
         <img
-          src="/brand-logo.png"
+          src="/brand-logo.svg"
           alt="K-Merce"
           style={{ display: 'block', width: '88px', height: '80px', objectFit: 'contain', margin: '0 auto 18px' }}
         />

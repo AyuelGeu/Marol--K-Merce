@@ -1,9 +1,9 @@
 const nodemailer = require('nodemailer');
 const path = require('path');
 
-const brandLogoPath = path.join(__dirname, '..', '..', 'frontend', 'public', 'brand-logo.png');
+const brandLogoPath = path.join(__dirname, '..', '..', 'frontend', 'public', 'brand-logo.svg');
 const brandLogoAttachments = () => [{
-  filename: 'brand-logo.png',
+  filename: 'brand-logo.svg',
   path: brandLogoPath,
   cid: 'kmerce-brand-logo'
 }];
