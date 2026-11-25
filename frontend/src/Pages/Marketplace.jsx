@@ -6,6 +6,7 @@ import Login from '../Auth/Login';
 import Register from '../Auth/Register';
 import VendorApplication from './VendorApplication';
 import MarketplaceChatbot from '../components/MarketplaceChatbot';
+import { updateCartQuantity } from '../utils/cart';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 const CART_STORAGE_KEY = 'marketplace_cart';
@@ -202,9 +203,7 @@ export default function Marketplace() {
   };
 
   const updateQuantity = (productId, change) => {
-    setCartItems((items) => items
-      .map((item) => item.id === productId ? { ...item, quantity: item.quantity + change } : item)
-      .filter((item) => item.quantity > 0));
+    setCartItems((items) => updateCartQuantity(items, productId, change));
     setPaymentError('');
     setPaymentSuccess('');
   };

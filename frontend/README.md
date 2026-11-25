@@ -1,26 +1,26 @@
-# React + Vite
+# K-Merce Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite frontend for the K-Merce marketplace.
 
-## Password reset configuration
+## Local development
 
-Set these environment variables for the URLs used in reset emails and API requests:
+```powershell
+npm install
+npm run dev
+```
 
-- Backend `.env`: `FRONTEND_URL` must be the browser-accessible frontend origin (for example, `https://shop.example.com`).
-- Frontend `.env`: `VITE_BACKEND_URL` must be the backend origin (for example, `https://api.example.com`).
-- Backend `.env`: configure `EMAIL_USER` and `EMAIL_APP_PASS` for the account that sends reset emails. `EMAIL_SERVICE` is optional and defaults to Gmail.
+The frontend uses `VITE_BACKEND_URL`, defaulting to `http://localhost:5000`.
 
-For local development, the frontend and backend default to `http://localhost:5173` and `http://localhost:5000`. Vite environment variables are embedded at build time, so rebuild the frontend after changing `VITE_BACKEND_URL`. Do not commit email credentials.
+```text
+VITE_BACKEND_URL=http://localhost:5000
+```
 
-Currently, two official plugins are available:
+Build and test:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```powershell
+npm test
+npm run lint
+npm run build
+```
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Vite environment variables are embedded at build time. Rebuild after changing `VITE_BACKEND_URL`.

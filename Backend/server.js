@@ -15,6 +15,8 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const FacebookStrategy = require('passport-facebook').Strategy;
 const OpenAI = require('openai');
+const crypto = require('crypto');
+const { getRequiredSecret, tokensMatch } = require('./utils/security');
 
 // Import the updated Staff model
 const Staff = require('./models/Users');
@@ -26,6 +28,8 @@ const marketplaceRoutes = require('./routes/marketplaceRoutes');
 const mpesaRoutes = require('./routes/mpesaRoutes');
 const scheduleDailyVendorSalesDigest = require('./utils/vendorSalesDigest');
 const app = express();
+const sessionSecret = getRequiredSecret('SESSION_SECRET');
+getRequiredSecret('JWT_SECRET');
 
 app.use(express.json());
 
@@ -51,7 +55,7 @@ app.use('/api/mpesa', mpesaRoutes); // M-Pesa routes
 const secureSessionCookie = process.env.NODE_ENV === 'production' ||
     (process.env.BACKEND_URL || '').startsWith('https://');
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'a_secure_random_string',
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -291,7 +295,7 @@ const requireDoubleLayerAuth = async (req, res, next) => {
 
     let decoded;
     try {
-        decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretkey');
+        decoded = jwt.verify(token, getRequiredSecret('JWT_SECRET'));
     } catch (error) {
         return res.status(401).json({ error: 'Unauthorized: Invalid JWT' });
     }
@@ -364,15 +368,41 @@ app.get('/auth/facebook/callback',
 
 // --- TikTok OAuth Routes (Manual Implementation via Session) ---
 app.get('/auth/tiktok', (req, res) => {
-    const csrfState = Math.random().toString(36).substring(7);
-    res.cookie('csrfState', csrfState, { maxAge: 60000 });
+    const csrfState = crypto.randomBytes(32).toString('hex');
+    res.cookie('csrfState', csrfState, {
+        maxAge: 10 * 60 * 1000,
+        httpOnly: true,
+        secure: secureSessionCookie,
+        sameSite: 'lax',
+        path: '/auth/tiktok/callback'
+    });
 
-    const url = `https://www.tiktok.com/v2/auth/authorize/?client_key=${process.env.TIKTOK_CLIENT_KEY}&scope=user.info.basic&response_type=code&redirect_uri=${process.env.BACKEND_URL}/auth/tiktok/callback&state=${csrfState}`;
-    res.redirect(url);
+    const authorizeUrl = new URL('https://www.tiktok.com/v2/auth/authorize/');
+    authorizeUrl.searchParams.set('client_key', process.env.TIKTOK_CLIENT_KEY || '');
+    authorizeUrl.searchParams.set('scope', 'user.info.basic');
+    authorizeUrl.searchParams.set('response_type', 'code');
+    authorizeUrl.searchParams.set('redirect_uri', `${process.env.BACKEND_URL}/auth/tiktok/callback`);
+    authorizeUrl.searchParams.set('state', csrfState);
+    res.redirect(authorizeUrl.toString());
 });
 
 app.get('/auth/tiktok/callback', async(req, res) => {
     const { code } = req.query;
+    const state = req.query.state;
+    const csrfState = req.cookies?.csrfState;
+    res.clearCookie('csrfState', {
+        httpOnly: true,
+        secure: secureSessionCookie,
+        sameSite: 'lax',
+        path: '/auth/tiktok/callback'
+    });
+
+    if (!tokensMatch(state, csrfState)) {
+        return res.status(400).send('Invalid or expired OAuth state.');
+    }
+    if (typeof code !== 'string' || !code) {
+        return res.status(400).send('TikTok authorization did not return a code.');
+    }
 
     try {
         // Exchange authorization code for token

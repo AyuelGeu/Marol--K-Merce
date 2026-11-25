@@ -20,6 +20,7 @@ export default function AdminCustomers() {
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deletingUserId, setDeletingUserId] = useState('');
   const navigate = useNavigate();
 
   const fetchCustomers = useCallback(async () => {
@@ -117,6 +118,32 @@ export default function AdminCustomers() {
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('user_data');
     navigate('/login', { replace: true });
+  };
+
+  const deleteCustomer = async (customer) => {
+    if (!window.confirm(`Delete the account for ${customer.email}? This cannot be undone.`)) {
+      return;
+    }
+    setDeletingUserId(customer._id);
+    setError('');
+    try {
+      await axios.delete(`${BACKEND_URL}/api/auth/admin/users/${customer._id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('jwt_token')}`,
+          'ngrok-skip-browser-warning': 'true'
+        },
+        withCredentials: true
+      });
+      setUsers((current) => current.filter((user) => user._id !== customer._id));
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+        requestError.response?.data?.error ||
+        'Unable to delete the customer account.'
+      );
+    } finally {
+      setDeletingUserId('');
+    }
   };
 
   return (
@@ -217,11 +244,12 @@ export default function AdminCustomers() {
                     <th scope="col">ROLE</th>
                     <th scope="col">JOINED</th>
                     <th scope="col">STATUS</th>
+                    <th scope="col">ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading && (
-                    <tr><td className="admin-table-message" colSpan="4">Loading customers…</td></tr>
+                    <tr><td className="admin-table-message" colSpan="5">Loading customers…</td></tr>
                   )}
                   {!isLoading && !error && filteredCustomers.map((customer) => (
                     <tr key={customer._id}>
@@ -254,17 +282,27 @@ export default function AdminCustomers() {
                         }) : '—'}
                       </td>
                       <td><span className="admin-status"><span />Active</span></td>
+                      <td>
+                        <button
+                          type="button"
+                          className="admin-delete-button"
+                          onClick={() => deleteCustomer(customer)}
+                          disabled={deletingUserId === customer._id}
+                        >
+                          {deletingUserId === customer._id ? 'Deleting…' : 'Delete'}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {!isLoading && !error && filteredCustomers.length === 0 && (
                     <tr>
-                      <td className="admin-table-message" colSpan="4">
+                      <td className="admin-table-message" colSpan="5">
                         {search ? 'No customers match your search.' : 'No customer accounts found.'}
                       </td>
                     </tr>
                   )}
                   {!isLoading && error && (
-                    <tr><td className="admin-table-message" colSpan="4">Customer data is unavailable.</td></tr>
+                    <tr><td className="admin-table-message" colSpan="5">Customer data is unavailable.</td></tr>
                   )}
                 </tbody>
               </table>

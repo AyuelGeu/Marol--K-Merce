@@ -40,6 +40,7 @@ export default function VendorDashboard() {
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [isLoadingOrders, setIsLoadingOrders] = useState(true);
   const [isPublishingProduct, setIsPublishingProduct] = useState(false);
+  const [deletingProductId, setDeletingProductId] = useState('');
   const [editingProductId, setEditingProductId] = useState('');
   const [productThumbnail, setProductThumbnail] = useState(null);
   const [productGallery, setProductGallery] = useState([]);
@@ -301,6 +302,33 @@ export default function VendorDashboard() {
     setProductImageInputKey((key) => key + 1);
     setProductError('');
     setProductMessage('');
+  };
+
+  const deleteProduct = async (product) => {
+    if (!window.confirm(`Delete "${product.name}" from your catalog? This cannot be undone.`)) {
+      return;
+    }
+    setDeletingProductId(product._id);
+    setProductError('');
+    setProductMessage('');
+    try {
+      await axios.delete(`${BACKEND_URL}/api/marketplace/products/${product._id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('jwt_token')}`,
+          'ngrok-skip-browser-warning': 'true'
+        },
+        withCredentials: true
+      });
+      setProducts((current) => current.filter((item) => item._id !== product._id));
+      setProductMessage('Product deleted successfully.');
+      if (editingProductId === product._id) {
+        cancelProductEdit();
+      }
+    } catch (error) {
+      setProductError(error.response?.data?.message || 'Unable to delete this product.');
+    } finally {
+      setDeletingProductId('');
+    }
   };
 
   const saveStoreName = async (event) => {
@@ -1122,6 +1150,32 @@ export default function VendorDashboard() {
           opacity: .55;
         }
 
+        .vendor-workspace .vendor-product-delete {
+          min-height: 35px;
+          padding: 0 12px;
+          border: 1px solid #efc9c9;
+          border-radius: 9px;
+          background: #fff6f6;
+          color: #b33a3a;
+          cursor: pointer;
+          font: inherit;
+          font-size: 10px;
+          font-weight: 750;
+          white-space: nowrap;
+          transition: background .18s ease, border-color .18s ease, transform .18s ease;
+        }
+
+        .vendor-workspace .vendor-product-delete:hover:not(:disabled) {
+          transform: translateY(-1px);
+          border-color: #dfaaaa;
+          background: #feeaea;
+        }
+
+        .vendor-workspace .vendor-product-delete:disabled {
+          cursor: not-allowed;
+          opacity: .55;
+        }
+
         .vendor-workspace .vendor-product-empty {
           display: grid;
           justify-items: center;
@@ -1747,6 +1801,15 @@ export default function VendorDashboard() {
                           aria-label={`Edit ${product.name}`}
                         >
                           Edit listing
+                        </button>
+                        <button
+                          className="vendor-product-delete"
+                          type="button"
+                          onClick={() => deleteProduct(product)}
+                          disabled={Boolean(deletingProductId) || Boolean(editingProductId)}
+                          aria-label={`Delete ${product.name}`}
+                        >
+                          {deletingProductId === product._id ? 'Deleting…' : 'Delete'}
                         </button>
                       </div>
                     </div>

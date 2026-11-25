@@ -6,6 +6,7 @@ const Payment = require('../models/Payment');
 const createPaidOrder = require('../utils/createPaidOrder');
 const { reserveForPayment, releaseForFailedPayment } = require('../utils/productInventory');
 const { sendPaymentReceiptEmail } = require('../utils/sendEmail');
+const buildAuthenticatedCallbackUrl = require('../utils/mpesaCallback');
 
 const normalizePhone = (value) => {
   const digits = String(value || '').replace(/\D/g, '');
@@ -124,8 +125,16 @@ exports.stkPush = async (req, res) => {
 
   const shortcode = process.env.MPESA_SHORTCODE;
   const passkey = process.env.MPESA_PASSKEY;
-  const callbackUrl = process.env.MPESA_CALLBACK_URL;
-  if (!shortcode || !passkey || !callbackUrl || !req.mpesaToken || !req.mpesaBaseUrl) {
+  const callbackToken = process.env.MPESA_CALLBACK_TOKEN;
+  const callbackBaseUrl = process.env.MPESA_CALLBACK_URL;
+  let callbackUrl;
+  try {
+    callbackUrl = buildAuthenticatedCallbackUrl(callbackBaseUrl, callbackToken);
+  } catch (error) {
+    console.error('M-Pesa callback configuration is invalid:', error.message);
+    return res.status(503).json({ error: 'M-Pesa payments are not fully configured.' });
+  }
+  if (!shortcode || !passkey || !req.mpesaToken || !req.mpesaBaseUrl) {
     console.error('M-Pesa STK Push configuration is incomplete.');
     return res.status(503).json({ error: 'M-Pesa payments are not fully configured.' });
   }

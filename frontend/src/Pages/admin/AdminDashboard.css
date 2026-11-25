@@ -956,6 +956,30 @@
   background: var(--admin-surface-hover);
 }
 
+.admin-delete-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #efc9c9;
+  border-radius: 8px;
+  background: #fff6f6;
+  color: #b33a3a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.admin-delete-button:hover:not(:disabled) {
+  border-color: #dfaaaa;
+  background: #feeaea;
+}
+
+.admin-delete-button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
 .admin-user-cell {
   display: flex;
   min-width: 220px;

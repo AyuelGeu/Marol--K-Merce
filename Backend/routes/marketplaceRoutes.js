@@ -10,6 +10,7 @@ const createPaidOrder = require('../utils/createPaidOrder');
 const { sendDeliveryConfirmationEmail } = require('../utils/sendEmail');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const uploadProductImage = require('../middleware/productImageUpload');
+const getValidatedProductFields = require('../utils/productValidation');
 
 const router = express.Router();
 const uploadsDirectory = path.join(__dirname, '..', 'uploads');
@@ -80,31 +81,6 @@ const removeStoredImage = async (imageUrl) => {
             console.error('Unable to remove a replaced product image:', error);
         }
     }
-};
-
-const getValidatedProductFields = (body) => {
-    const { name, description = '', category, price, inventory } = body;
-    const trimmedName = typeof name === 'string' ? name.trim() : '';
-    const trimmedDescription = typeof description === 'string' ? description.trim() : '';
-    const trimmedCategory = typeof category === 'string' ? category.trim() : '';
-    const numericPrice = Number(price);
-    const numericInventory = Number(inventory);
-
-    if (!trimmedName || trimmedName.length > 120 || trimmedDescription.length > 2000 ||
-        !trimmedCategory || trimmedCategory.length > 60 || !Number.isFinite(numericPrice) ||
-        numericPrice <= 0 || numericPrice > 1000000000 ||
-        !Number.isInteger(numericPrice) || !Number.isInteger(numericInventory) ||
-        numericInventory < 0 || numericInventory > 1000000000) {
-        return null;
-    }
-
-    return {
-        name: trimmedName,
-        description: trimmedDescription,
-        category: trimmedCategory,
-        price: numericPrice,
-        inventory: numericInventory
-    };
 };
 
 router.get('/products', async (req, res) => {
@@ -240,6 +216,41 @@ router.put('/products/:productId', protect, authorize('vendor'), (req, res, next
         await removeUploadedImages(req.files);
         console.error('Vendor product update error:', error);
         return res.status(500).json({ message: 'Unable to update this product' });
+    }
+});
+
+router.delete('/products/:productId', protect, authorize('vendor'), async (req, res) => {
+    if (!mongoose.Types.ObjectId.isValid(req.params.productId)) {
+        return res.status(400).json({ message: 'Invalid product ID.' });
+    }
+
+    try {
+        const product = await Product.findOne({
+            _id: req.params.productId,
+            vendor: req.user._id
+        });
+        if (!product) {
+            return res.status(404).json({ message: 'Product not found in your catalog.' });
+        }
+
+        const hasOpenOrders = await Order.exists({
+            'items.product': product._id,
+            status: { $nin: ['cancelled', 'completed'] }
+        });
+        if (hasOpenOrders) {
+            return res.status(409).json({
+                message: 'This product cannot be deleted while it has open orders.'
+            });
+        }
+
+        await Product.deleteOne({ _id: product._id, vendor: req.user._id });
+        await removeStoredImage(product.imageUrl);
+        await Promise.all((product.galleryUrls || []).map(removeStoredImage));
+
+        return res.status(200).json({ message: 'Product deleted successfully.' });
+    } catch (error) {
+        console.error('Vendor product deletion error:', error);
+        return res.status(500).json({ message: 'Unable to delete this product' });
     }
 });
 

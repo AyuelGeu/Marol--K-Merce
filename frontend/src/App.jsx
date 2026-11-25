@@ -1,23 +1,22 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import Login from './Auth/Login';
-import Register from './Auth/Register';
-import OtpVerification from './Auth/OtpVerification';
 import './App.css'; // You can keep your existing CSS file
-import LandingPage from './Pages/LandingPage'; // Import the LandingPage component
-import ForgotPassword from './Auth/ForgotPassword';
-import ResetPassword from './Auth/ResetPassword';
-import OAuthCallback from './Auth/OAuthCallback';
 
-//Role-Specific Dashboards
-import AdminDashboard from './Pages/admin/AdminDashboard.jsx';
-import AdminPayments from './Pages/admin/AdminPayments.jsx';
-import AdminCustomers from './Pages/admin/AdminCustomers.jsx';
-import AdminVendors from './Pages/admin/AdminVendors.jsx';
-import VendorDashboard from './Pages/vendor/VendorDashboard.jsx';
-import CustomerDashboard from './Pages/customer/CustomerDashboard.jsx';
-import Marketplace from './Pages/Marketplace.jsx';
-import VendorApplication from './Pages/VendorApplication.jsx';
+const Login = lazy(() => import('./Auth/Login'));
+const Register = lazy(() => import('./Auth/Register'));
+const OtpVerification = lazy(() => import('./Auth/OtpVerification'));
+const LandingPage = lazy(() => import('./Pages/LandingPage'));
+const ForgotPassword = lazy(() => import('./Auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('./Auth/ResetPassword'));
+const OAuthCallback = lazy(() => import('./Auth/OAuthCallback'));
+const AdminDashboard = lazy(() => import('./Pages/admin/AdminDashboard.jsx'));
+const AdminPayments = lazy(() => import('./Pages/admin/AdminPayments.jsx'));
+const AdminCustomers = lazy(() => import('./Pages/admin/AdminCustomers.jsx'));
+const AdminVendors = lazy(() => import('./Pages/admin/AdminVendors.jsx'));
+const VendorDashboard = lazy(() => import('./Pages/vendor/VendorDashboard.jsx'));
+const CustomerDashboard = lazy(() => import('./Pages/customer/CustomerDashboard.jsx'));
+const Marketplace = lazy(() => import('./Pages/Marketplace.jsx'));
+const VendorApplication = lazy(() => import('./Pages/VendorApplication.jsx'));
 
 //Security Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -106,6 +105,7 @@ function App() {
   return (
     <Router>
       <InactivityLogout />
+      <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Loading…</div>}>
       <Routes>
         {/* Start visitors in the marketplace */}
         <Route path="/" element={<LandingPage />} />
@@ -148,6 +148,7 @@ function App() {
         </Route>
         <Route path="*" element={<Navigate to="/unauthorized" />} />
       </Routes>
+      </Suspense>
     </Router>
   );
 }

@@ -1,6 +1,7 @@
 // middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
 const Staff = require('../models/Users');
+const { getRequiredSecret } = require('../utils/security');
 
 // Layer 1 & 2: Authentication Identity
 exports.protect = async (req, res, next) => {
@@ -23,7 +24,7 @@ exports.protect = async (req, res, next) => {
 
     try {
         // 3. Verify the token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretkey');
+        const decoded = jwt.verify(token, getRequiredSecret('JWT_SECRET'));
 
         //Fetch current user details excluding password to keep req.user fresh
         const currentUser = await Staff.findById(decoded.id).select('-password ');

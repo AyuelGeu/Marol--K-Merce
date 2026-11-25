@@ -1,8 +1,13 @@
 // routes/authRoutes.js
 const express = require('express');
+const fs = require('fs/promises');
+const path = require('path');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Staff = require('../models/Users');
+const mongoose = require('mongoose');
+const Product = require('../models/Product');
+const Order = require('../models/Order');
 const {
     registerStaff,
     applyAsVendor,
@@ -14,6 +19,7 @@ const {
     updateVendorStoreName,
     reviewVendorStoreName
 } = require('../controllers/authController');
+const { getRequiredSecret } = require('../utils/security');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const uploadProfilePicture = require('../middleware/profilePictureUpload');
 
@@ -136,7 +142,7 @@ router.get('/oauth-session', async (req, res) => {
 
         const token = jwt.sign(
             { id: staff._id, role: staff.role },
-            process.env.JWT_SECRET || 'supersecretkey',
+            getRequiredSecret('JWT_SECRET'),
             { expiresIn: '1d' }
         );
 
@@ -172,6 +178,68 @@ router.get('/admin/users', protect, authorize('admin'), async (req, res) => {
         res.status(200).json(users);
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch users' });
+    }
+});
+
+router.delete('/admin/users/:userId', protect, authorize('admin'), async (req, res) => {
+    if (!mongoose.Types.ObjectId.isValid(req.params.userId)) {
+        return res.status(400).json({ message: 'Invalid user ID.' });
+    }
+
+    try {
+        const account = await Staff.findById(req.params.userId);
+        if (!account) {
+            return res.status(404).json({ message: 'User account was not found.' });
+        }
+        if (account.role === 'admin') {
+            return res.status(403).json({ message: 'Administrator accounts cannot be deleted from this endpoint.' });
+        }
+
+        if (account.role === 'customer') {
+            const openOrder = await Order.exists({
+                customer: account._id,
+                status: { $nin: ['cancelled', 'completed'] }
+            });
+            if (openOrder) {
+                return res.status(409).json({
+                    message: 'This customer cannot be deleted while they have open orders.'
+                });
+            }
+        }
+
+        if (account.role === 'vendor') {
+            const openOrder = await Order.exists({
+                'items.vendor': account._id,
+                status: { $nin: ['cancelled', 'completed'] }
+            });
+            if (openOrder) {
+                return res.status(409).json({
+                    message: 'This vendor cannot be deleted while they have open orders.'
+                });
+            }
+            const vendorProducts = await Product.find({ vendor: account._id }).select('imageUrl galleryUrls');
+            const storedImages = vendorProducts.flatMap((product) => [
+                product.imageUrl,
+                ...(product.galleryUrls || [])
+            ]);
+            await Promise.all(storedImages.map(async (imageUrl) => {
+                if (typeof imageUrl !== 'string' || !imageUrl.startsWith('/uploads/')) return;
+                try {
+                    await fs.unlink(path.join(__dirname, '..', 'uploads', path.basename(imageUrl)));
+                } catch (error) {
+                    if (error.code !== 'ENOENT') {
+                        console.error('Unable to remove vendor product image:', error);
+                    }
+                }
+            }));
+            await Product.deleteMany({ vendor: account._id });
+        }
+
+        await Staff.deleteOne({ _id: account._id });
+        return res.status(200).json({ message: 'User account deleted successfully.' });
+    } catch (error) {
+        console.error('Admin account deletion error:', error);
+        return res.status(500).json({ message: 'Unable to delete the user account.' });
     }
 });
 

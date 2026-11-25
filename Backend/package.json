@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "npx @dotenvx/dotenvx run -- nodemon server.js",
-    "ingest": "node ingest.js"
+    "ingest": "node ingest.js",
+    "test": "node --test test/productValidation.test.js test/security.test.js test/mpesaCallback.test.js"
   },
   "keywords": [],
   "author": "",

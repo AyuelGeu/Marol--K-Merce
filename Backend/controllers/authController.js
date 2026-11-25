@@ -6,8 +6,8 @@ const crypto = require('crypto');
 const fs = require('fs').promises;
 const path = require('path');
 const { sendOTPEmail, sendPasswordResetEmail } = require('../utils/sendEmail');
-
-const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+const { generateOTP, getOtpLockExpiry } = require('../utils/otp');
+const { getRequiredSecret } = require('../utils/security');
 const supportedRoles = new Set(Staff.schema.path('role').enumValues);
 
 // Registration Controller
@@ -40,7 +40,9 @@ exports.registerStaff = async(req, res) => {
             name: name || 'New User',
             role: 'customer', // HARDCODED TO CUSTOMER
             otp: otp,
-            otpExpiry: Date.now() + 10 * 60 * 1000
+            otpExpiry: Date.now() + 10 * 60 * 1000,
+            otpAttempts: 0,
+            otpLockedUntil: null
         });
 
         await newStaff.save();
@@ -146,6 +148,8 @@ exports.applyAsVendor = async (req, res) => {
             role: 'customer',
             otp,
             otpExpiry: Date.now() + 10 * 60 * 1000,
+            otpAttempts: 0,
+            otpLockedUntil: null,
             vendorApplication: {
                 storeName: requestedStoreName,
                 storeDescription: requestedStoreDescription,
@@ -204,6 +208,10 @@ exports.loginStaff = async(req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
+        if (staff.otpLockedUntil && staff.otpLockedUntil.getTime() > Date.now()) {
+            return res.status(429).json({ message: 'Too many incorrect OTP attempts. Try again later.' });
+        }
+
         if (!supportedRoles.has(staff.role)) {
             return res.status(403).json({
                 message: `This account has an unsupported role ('${staff.role}'). Ask an administrator to assign customer, vendor, or admin access.`
@@ -214,6 +222,8 @@ exports.loginStaff = async(req, res) => {
         const otp = generateOTP();
         staff.otp = otp;
         staff.otpExpiry = Date.now() + 10 * 60 * 1000;
+        staff.otpAttempts = 0;
+        staff.otpLockedUntil = null;
         await staff.save();
 
         // Send OTP email
@@ -236,15 +246,44 @@ exports.loginStaff = async(req, res) => {
 exports.verifyOTP = async(req, res) => {
     try {
         const { email, otp } = req.body;
-
-        const staff = await Staff.findOne({ email });
-
-        if (!staff || staff.otp !== otp) {
+        if (typeof email !== 'string' || typeof otp !== 'string' || !otp) {
             return res.status(400).json({ error: 'Invalid OTP' });
         }
 
-        if (staff.otpExpiry < Date.now()) {
+        const staff = await Staff.findOne({ email: email.trim() });
+        if (!staff) {
+            return res.status(400).json({ error: 'Invalid OTP' });
+        }
+
+        if (staff.otpLockedUntil && staff.otpLockedUntil.getTime() > Date.now()) {
+            return res.status(429).json({ error: 'Too many incorrect OTP attempts. Try again later.' });
+        }
+
+        if (!staff.otp || !staff.otpExpiry || staff.otpExpiry.getTime() < Date.now()) {
             return res.status(400).json({ error: 'OTP has expired' });
+        }
+
+        if (staff.otp !== otp) {
+            const failedAttempt = await Staff.findOneAndUpdate(
+                { _id: staff._id, otp: staff.otp },
+                { $inc: { otpAttempts: 1 } },
+                { returnDocument: 'after' }
+            ).select('otpAttempts');
+            if (failedAttempt && failedAttempt.otpAttempts >= 5) {
+                const otpLockedUntil = getOtpLockExpiry(failedAttempt.otpAttempts);
+                await Staff.updateOne(
+                    { _id: staff._id, otpAttempts: { $gte: 5 } },
+                    {
+                        $set: {
+                            otpLockedUntil,
+                            otp: null,
+                            otpExpiry: null
+                        }
+                    }
+                );
+                return res.status(429).json({ error: 'Too many incorrect OTP attempts. Request a new code later.' });
+            }
+            return res.status(400).json({ error: 'Invalid OTP' });
         }
 
         if (!supportedRoles.has(staff.role)) {
@@ -256,6 +295,8 @@ exports.verifyOTP = async(req, res) => {
         // Clear OTP and mark verified
         staff.otp = null;
         staff.otpExpiry = null;
+        staff.otpAttempts = 0;
+        staff.otpLockedUntil = null;
         staff.isVerified = true;
         await staff.save();
 
@@ -266,7 +307,7 @@ exports.verifyOTP = async(req, res) => {
 
         // Generate a JWT Token (Layer 2)
         const token = jwt.sign({ id: staff._id, role: staff.role },
-            process.env.JWT_SECRET || 'supersecretkey', { expiresIn: '1d' }
+            getRequiredSecret('JWT_SECRET'), { expiresIn: '1d' }
         );
 
         res.status(200).json({

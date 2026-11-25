@@ -31,8 +31,12 @@ export default function LandingPage() {
     if (products.length === 0) return [];
 
     const shuffledProducts = [...products];
+    let seed = products.reduce((value, product) =>
+      (value + String(product.id || '').split('').reduce((sum, character) => sum + character.charCodeAt(0), 0)) % 2147483647,
+    products.length);
     for (let index = shuffledProducts.length - 1; index > 0; index -= 1) {
-      const randomIndex = Math.floor(Math.random() * (index + 1));
+      seed = (seed * 16807) % 2147483647;
+      const randomIndex = seed % (index + 1);
       [shuffledProducts[index], shuffledProducts[randomIndex]] =
         [shuffledProducts[randomIndex], shuffledProducts[index]];
     }

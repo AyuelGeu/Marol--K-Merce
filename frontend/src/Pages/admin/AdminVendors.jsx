@@ -20,6 +20,7 @@ export default function AdminVendors() {
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deletingUserId, setDeletingUserId] = useState('');
   const navigate = useNavigate();
 
   const fetchVendors = useCallback(async () => {
@@ -117,6 +118,32 @@ export default function AdminVendors() {
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('user_data');
     navigate('/login', { replace: true });
+  };
+
+  const deleteVendor = async (vendor) => {
+    if (!window.confirm(`Delete the vendor account and catalog for ${vendor.email}? This cannot be undone.`)) {
+      return;
+    }
+    setDeletingUserId(vendor._id);
+    setError('');
+    try {
+      await axios.delete(`${BACKEND_URL}/api/auth/admin/users/${vendor._id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('jwt_token')}`,
+          'ngrok-skip-browser-warning': 'true'
+        },
+        withCredentials: true
+      });
+      setVendors((current) => current.filter((user) => user._id !== vendor._id));
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+        requestError.response?.data?.error ||
+        'Unable to delete the vendor account.'
+      );
+    } finally {
+      setDeletingUserId('');
+    }
   };
 
   return (
@@ -217,11 +244,12 @@ export default function AdminVendors() {
                     <th scope="col">STORE</th>
                     <th scope="col">JOINED</th>
                     <th scope="col">APPROVAL</th>
+                    <th scope="col">ACTIONS</th>
                   </tr>
                 </thead>
                 <tbody>
                   {isLoading && (
-                    <tr><td className="admin-table-message" colSpan="4">Loading vendors…</td></tr>
+                    <tr><td className="admin-table-message" colSpan="5">Loading vendors…</td></tr>
                   )}
                   {!isLoading && !error && filteredVendors.map((vendor) => {
                     const isApproved = Boolean(vendor.vendorProfile?.isApproved);
@@ -267,18 +295,28 @@ export default function AdminVendors() {
                             <span />{isApproved ? 'Approved' : 'Pending'}
                           </span>
                         </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="admin-delete-button"
+                            onClick={() => deleteVendor(vendor)}
+                            disabled={deletingUserId === vendor._id}
+                          >
+                            {deletingUserId === vendor._id ? 'Deleting…' : 'Delete'}
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
                   {!isLoading && !error && filteredVendors.length === 0 && (
                     <tr>
-                      <td className="admin-table-message" colSpan="4">
+                      <td className="admin-table-message" colSpan="5">
                         {search ? 'No vendors match your search.' : 'No vendor accounts found.'}
                       </td>
                     </tr>
                   )}
                   {!isLoading && error && (
-                    <tr><td className="admin-table-message" colSpan="4">Vendor data is unavailable.</td></tr>
+                    <tr><td className="admin-table-message" colSpan="5">Vendor data is unavailable.</td></tr>
                   )}
                 </tbody>
               </table>
